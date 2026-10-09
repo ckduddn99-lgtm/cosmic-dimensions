@@ -5,6 +5,7 @@ const BigNum = require('../www/js/bignum.js');
 require('../www/js/data.js');
 const core = require('../www/js/core.js');
 const SD = require('../www/js/saga-data.js');
+require('../www/js/talk.js');
 const saga = require('../www/js/saga.js');
 const { run } = require('./saga-sim.js');
 
@@ -108,11 +109,11 @@ test('최대 레벨 성좌에게도 공물을 바칠 수 있고, 성력으로만
   core.invest(s, 0, new BigNum(1, 200), NOW);
   assert.equal(s.constellations[0].level, 10);
   s.matter = new BigNum(4, 250);
-  const power = new BigNum(s.saga.power[0]), matter = new BigNum(s.matter), inv = new BigNum(s.constellations[0].invested);
+  const power = s.saga.power[0], matter = new BigNum(s.matter), inv = new BigNum(s.constellations[0].invested);
   const r = core.invest(s, 0, new BigNum(1, 250), NOW);
   assert.ok(r.ok && r.max);
   assert.equal(s.constellations[0].level, 10);
-  assert.ok(s.saga.power[0].gt(power), '성력 증가');
+  assert.ok(s.saga.power[0] > power, '성력 증가');
   assert.ok(s.matter.lt(matter), '반물질 차감');
   assert.equal(s.constellations[0].invested.cmp(inv), 0, '레벨 진행치는 그대로');
 });
@@ -129,7 +130,9 @@ test('운명 사건: 엮인 성좌가 많고 영향력이 클수록 많이 가�
   assert.ok(s.matter.lt(before));
   assert.ok(out.taken.gt(0));
   assert.ok(s.saga.feed.filter(e => e.kind === 'take').length === 3);
-  assert.ok(!s.saga.power[5].isZero(), '엮인 성좌가 각자 몫을 챙긴다');
+  assert.ok(s.saga.power.every(v => v === 0), '빼앗은 반물질은 성력이 되지 않는다');
+  assert.ok(s.saga.feed.filter(e => e.kind === 'take').every(e => e.text.includes('불태웠습니다')), '그 자리에서 불태운다');
+  assert.ok(s.saga.stats.taken.gt(0));
 });
 
 test('타락: 부패도 100이면 타락하고 반란 긴장도가 오른다', () => {
@@ -137,7 +140,7 @@ test('타락: 부패도 100이면 타락하고 반란 긴장도가 오른다', (
   saga.ensureWorld(s, NOW); saga.choose(s, 0, NOW);
   const ap = saga.apostleOf(s, 0);
   ap.corrupt = 99.9; ap.sponsorAt = 0;
-  s.saga.power[0] = new BigNum(0);
+  s.saga.power[0] = 0;
   for (let k = 0; k < 20 && ap.status === 'apostle'; k++) saga.step(s, NOW + k * 15000);
   assert.equal(ap.status, 'fallen');
   assert.ok(s.saga.tension.rebellion >= 19, '감쇠 후에도 큰 폭 상승');
@@ -196,14 +199,14 @@ test('한국어 조사: 이름 받침에 맞춰 이/가·을/를·과/와를 고
   assert.equal(saga.fillName('타락한 자 {F}가 왔다', 'F', '로아', '타락한 '), '타락한 자 로아가 왔다');
 });
 
-test('오프라인 공물: 깨어난 성좌만 영향력 비율로 획득량의 10%를 성력으로 거둬 간다', () => {
+test('오프라인 공물: 깨어난 성좌만 영향력 비율로 획득량의 15%를 성력으로 거둬 간다', () => {
   const s = world(2);
   s.matter = new BigNum(1, 20);
   const gain = new BigNum(1, 19);
   const r = saga.tribute(s, gain, NOW);
-  assert.ok(r && Math.abs(r.total.div(gain).toNumber() - 0.1) < 1e-9);
-  assert.ok(Math.abs(s.matter.div(new BigNum(1, 20)).toNumber() - 0.99) < 1e-9);
-  assert.ok(!s.saga.power[0].isZero() && !s.saga.power[1].isZero() && s.saga.power[2].isZero());
+  assert.ok(r && Math.abs(r.total.div(gain).toNumber() - 0.15) < 1e-9);
+  assert.ok(Math.abs(s.matter.div(new BigNum(1, 20)).toNumber() - 0.985) < 1e-9);
+  assert.ok(s.saga.power[0] > 0 && s.saga.power[1] > 0 && s.saga.power[2] === 0);
   assert.equal(saga.tribute(world(0), gain, NOW), null, '깨어난 성좌가 없으면 거둬 가지 않음');
 });
 
@@ -226,11 +229,11 @@ test('타락한 자는 옛 주인의 성력을 훔치거나 사도에게 속삭�
   saga.ensureWorld(s, NOW); saga.choose(s, 0, NOW); saga.choose(s, 1, NOW);
   const f = saga.apostleOf(s, 0);
   saga.corruptBy(f, 100, 'neglect'); saga.fall(s, f, NOW);
-  s.saga.power[0] = new BigNum(1, 30);
+  s.saga.power[0] = 1000;
   const kinds = new Set();
   for (let k = 0; k < 600 && kinds.size < 2; k++) { const r = saga.fallenAct(s, f, NOW + k); if (r) kinds.add(r); }
   assert.ok(kinds.has('steal') && kinds.has('whisper'), [...kinds].join(','));
-  assert.ok(s.saga.power[0].lt(new BigNum(1, 30)), '성력이 줄었다');
+  assert.ok(s.saga.power[0] < 1000, '성력이 줄었다');
   const v = saga.apostleOf(s, 1) || saga.fallen(s).find(p => p !== f);
   assert.ok(v.cs.whisper > 0, '속삭임이 타락 원인으로 남는다');
 });
@@ -298,4 +301,53 @@ test('성좌·사도 배율은 반물질(1차원)에만 붙어 차원끼리 불�
   const base = core.dimMults(Object.assign(world(0), { saga: s.saga }), NOW);
   assert.ok(Math.abs(m[0].div(base[0]).toNumber() - core.starMult(s, NOW)) < 1e-6);
   for (let i = 1; i < 8; i++) assert.ok(Math.abs(m[i].div(base[i]).toNumber() - 1) < 1e-9, '차원 ' + (i + 1));
+});
+
+test('대화: 타락도가 선을 넘으면 성좌가 말을 걸고, 대답에 따라 타락·충성이 실제로 움직인다', () => {
+  const s = world(1);
+  saga.ensureWorld(s, NOW); saga.choose(s, 0, NOW);
+  const ap = saga.apostleOf(s, 0);
+  s.saga.power[0] = 100;
+  const seen = new Set();
+  for (let k = 0; k < 40; k++) {
+    ap.corrupt = 31; ap.cmark = 0; ap.cs = { dark: 31 };
+    const before = ap.corrupt, n = s.saga.feed.length;
+    const st = saga.talk(s, ap, 'warn', {}, NOW + k * 1000);
+    seen.add(st);
+    const lines = s.saga.feed.slice(n);
+    assert.ok(lines.some(e => e.kind === 'talk' && e.text.startsWith("성좌 '오리온': “")), '성좌가 말한다');
+    assert.ok(lines.some(e => e.kind === 'reply' && e.text.startsWith(ap.name + ': “')), '사도가 대답한다');
+    if (st === 'accept') assert.ok(ap.corrupt < before);
+    if (st === 'defy') assert.ok(ap.corrupt > before);
+  }
+  assert.ok(seen.size >= 2, [...seen].join(','));
+});
+
+test('대화: 같은 말이 연달아 반복되지 않는다', () => {
+  const s = world(2);
+  saga.ensureWorld(s, NOW); saga.choose(s, 0, NOW); saga.choose(s, 1, NOW);
+  const ap = saga.apostleOf(s, 0);
+  s.saga.power[0] = 1000;
+  for (let k = 0; k < 120; k++) { ap.corrupt = 40 + (k % 50); ap.cs = { [['dark', 'fear', 'neglect', 'fate'][k % 4]]: 10 }; saga.talk(s, ap, ['warn', 'gift', 'win', 'saved'][k % 4], {}, NOW + k * 60000); }
+  const said = s.saga.feed.filter(e => e.kind === 'talk' || e.kind === 'reply').map(e => e.text);
+  assert.ok(said.length > 100);
+  for (let i = 1; i < said.length; i++) for (let j = Math.max(0, i - 12); j < i; j++) assert.notEqual(said[i], said[j], '최근 12줄 안에서 반복: ' + said[i]);
+  // 같은 사도·같은 상황으로 몰아붙여도 85% 이상이 서로 다른 문장이다 (실제 플레이에서는 지역·몬스터·동료가 바뀌어 더 다양하다)
+  assert.ok(new Set(said).size / said.length > 0.85);
+});
+
+test('후원: 정해진 성력을 쓰고 효과가 숫자로 보이며, 넉넉하면 대후원으로 가호를 내린다', () => {
+  const s = world(1);
+  saga.ensureWorld(s, NOW); saga.choose(s, 0, NOW);
+  const ap = saga.apostleOf(s, 0);
+  s.saga.power[0] = 0;
+  assert.equal(saga.sponsor(s, ap, NOW), false, '성력이 없으면 후원도 없다');
+  s.saga.power[0] = 1000;
+  let grand = false;
+  for (let k = 0; k < 200 && !grand; k++) { ap.blessN = 0; ap.corrupt = 60; saga.sponsor(s, ap, NOW + k); grand = s.saga.feed.some(e => e.kind === 'gift'); }
+  assert.ok(grand, '대후원이 일어난다');
+  const g = s.saga.feed.find(e => e.kind === 'gift');
+  assert.ok(/공격 \+\d+ · 최대 체력 \+\d+/.test(g.text), g.text);
+  assert.equal(ap.blessN, 12);
+  assert.ok(s.saga.power[0] < 1000);
 });

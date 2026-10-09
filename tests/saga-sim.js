@@ -3,7 +3,7 @@
 'use strict';
 require('../www/js/bignum.js'); require('../www/js/data.js');
 const core = require('../www/js/core.js');
-require('../www/js/saga-data.js');
+require('../www/js/saga-data.js'); require('../www/js/talk.js');
 const saga = require('../www/js/saga.js');
 const B = globalThis.CD.BigNum;
 

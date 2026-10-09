@@ -817,7 +817,7 @@
   let selConst = 0, sanct = null, adv = null, bubbleUntil = 0, lastStage = 0, skillEls = [], apEls = null, faceFor = -1;
   const pickEls = [], fateEls = {}, tensionSeen = {};
   const hhmm = t => new Date(t).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
-  const FEED_CLS = { party: 'sys', shadow: 'bad', hunt: 'take', redeem: 'big', tribute: 'take', fate: 'big', 'fate-fx': 'sys', death: 'bad', fall: 'bad', betray: 'bad', take: 'take', omen: 'omen', 'omen-big': 'omen big', voice: 'omen', pick: 'sys', sponsor: 'sys', save: 'sys', level: 'sys', battle: '' };
+  const FEED_CLS = { talk: 'talk', reply: 'reply', deed: 'sys', gift: 'big', party: 'sys', shadow: 'bad', hunt: 'take', redeem: 'big', tribute: 'take', fate: 'big', 'fate-fx': 'sys', death: 'bad', fall: 'bad', betray: 'bad', take: 'take', omen: 'omen', 'omen-big': 'omen big', voice: 'omen', pick: 'sys', sponsor: 'sys', save: 'sys', level: 'sys', battle: '' };
   function feedHTML(list) {
     return list.map(f => '<div class="feed-row ' + (FEED_CLS[f.kind] || '') + (f.big && f.kind !== 'omen-big' ? ' big' : '') + '"><time>' + hhmm(f.t) + '</time><span>' + esc(nums(f.text)) + '</span></div>').join('') || '<div class="empty-ap">아직 아무 일도 일어나지 않았습니다.</div>';
   }
@@ -888,6 +888,13 @@
     bubbleUntil = performance.now() + 3800;
     if (sanct && mood) sanct.react(mood);
   }
+  let advBubbleUntil = 0;
+  function showAdvBubble(text) {
+    const b = $('#adv-bubble');
+    b.textContent = text.length > 40 ? text.slice(0, 39) + '…' : text;
+    b.classList.remove('hidden');
+    advBubbleUntil = performance.now() + 4200;
+  }
   function hideBubble() { $('#sanct-bubble').classList.add('hidden'); bubbleUntil = 0; }
 
   function drawStage(t) {
@@ -901,6 +908,7 @@
     if (!ap) { const g = S.saga.hall.filter(h => h.patron === i).pop(); adv.setGrave(g && g.fate === 'dead' ? g : null); }
     adv.render(t);
     const b = $('#sanct-bubble');
+    if (advBubbleUntil && t > advBubbleUntil) { $('#adv-bubble').classList.add('hidden'); advBubbleUntil = 0; }
     if (bubbleUntil && t > bubbleUntil) hideBubble();
     else if (bubbleUntil) { const a = sanct.anchor(); b.style.left = Math.min(80, Math.max(20, a.x)) + '%'; b.style.top = Math.max(18, a.y) + '%'; }
   }
@@ -922,6 +930,15 @@
     else updateWorld();
   }
 
+  // 성력은 '내 생산 몇 초 분량' 단위. 지금 사도를 얼마나 더 돌볼 수 있는지 함께 보여 준다.
+  const fmtU = n => (n < 10 ? (Math.round(n * 10) / 10).toString() : fmtInt(n));
+  function powerText(i) {
+    const v = S.saga.power[i], ap = SG.apostleOf(S, i);
+    if (!S.constellations[i].apostleFound) return '—';
+    if (!ap) return fmtU(v);
+    const per = 0.3 + ap.lvl * 0.01, mins = v / per * 3.3;
+    return fmtU(v) + (v < per ? ' · 바닥남!' : ' · 후원 약 ' + (mins >= 120 ? Math.floor(mins / 60) + '시간' : Math.floor(mins) + '분'));
+  }
   function updateSanct(now, inf) {
     const i = selConst, c = S.constellations[i], def = D.constellations[i], awake = c.apostleFound, g = S.saga;
     $('#pane-stars').style.setProperty('--sanct-accent', PX.SANCT[i].accent);
@@ -933,7 +950,7 @@
     statRows($('#sanct-stats'), [
       ['영향력', awake ? (inf[i] * 100).toFixed(1) + '%' : '잠듦 (사건에 엮이지 않음)', true],
       ['몸값 (후원 비용 배율)', awake ? '×' + SG.priceMult(S, i).toFixed(2) : '—'],
-      ['성력 (성좌의 재화)', fmt(g.power[i])],
+      ['성력 (사도 후원 재원)', powerText(i)],
       ['명성', Math.round(g.fame[i])],
       ['축복', def.desc + (awake ? ' · 현재 +' + Math.round(C.constBonus(S, i) * 100) + '%' : '')]
     ]);
@@ -941,12 +958,14 @@
     if (!need) {
       setText($('#sanct-prog-a'), '최대 레벨 · 공물은 성력으로 쌓입니다'); setText($('#sanct-prog-b'), 'MAX'); width($('#sanct-fill'), 100);
       setDisabled($('#inv10'), S.matter.isZero()); setDisabled($('#invneed'), true); setText($('#invneed'), '최대 레벨');
+      setText($('#inv10'), '10% 공물 · 성력 +' + fmtU(SG.units(S, S.matter.mul(0.1), now)));
     } else {
       const rem = C.constRemaining(S, i);
       setText($('#sanct-prog-a'), awake ? '다음 후원 Lv.' + (c.level + 1) : '성좌 각성까지');
       setText($('#sanct-prog-b'), fmt(c.invested) + ' / ' + fmt(need));
       width($('#sanct-fill'), Math.min(1, c.invested.div(need).toNumber()) * 100);
       setDisabled($('#inv10'), S.matter.isZero());
+      if (awake) setText($('#inv10'), '10% 공물 · 성력 +' + fmtU(SG.units(S, S.matter.mul(0.1), now)));
       setText($('#invneed'), (awake ? '필요량 공물 · ' : '각성시키기 · ') + fmt(rem));
       setDisabled($('#invneed'), !S.matter.gte(rem));
     }
@@ -966,13 +985,13 @@
       setText($('#adv-sub'), ''); setText($('#adv-region'), lost && lost.fate === 'dead' ? '무덤' : '—');
     } else {
       const cl = SDX.classes[ap.cls], tr = SDX.traits[ap.trait];
-      if (apEls.drawn !== ap.id + ':' + Math.floor(ap.corrupt / 20)) { apEls.drawn = ap.id + ':' + Math.floor(ap.corrupt / 20); PX.personPortrait(apEls.cv, ap); }
+      const dk = ap.id + ':' + Math.floor(ap.corrupt / 20) + ':' + (ap.blessN > 0); if (apEls.drawn !== dk) { apEls.drawn = dk; PX.personPortrait(apEls.cv, ap); }
       setHTML(apEls.name, esc(ap.name) + (ap.title ? '<small>「' + esc(ap.title) + '」</small>' : ''));
       setText(apEls.meta, tr.name + ' ' + cl.name + ' · ' + ap.origin + ' · Lv.' + ap.lvl);
       const vals = [[ap.hp / ap.maxHp, Math.max(0, Math.round(ap.hp)) + '/' + Math.round(ap.maxHp)], [ap.loyal / 100, Math.round(ap.loyal)], [Math.min(1, ap.corrupt / 100), Math.round(Math.min(100, ap.corrupt))], [ap.xp / SG.xpNeed(ap.lvl), Math.floor(ap.xp / SG.xpNeed(ap.lvl) * 100) + '%']];
       apEls.bars.forEach((b, k) => { width(b.fill, vals[k][0] * 100); setText(b.val, vals[k][1]); });
       setHTML(apEls.stats, [['공격', ap.atk], ['방어', ap.def], ['행운', ap.luck], ['공적', ap.deeds]].map(([k, v]) => '<div>' + Math.round(v) + '<small>' + k + '</small></div>').join(''));
-      setText(apEls.faith, SG.fixJosa(SG.faith(S, ap, Date.now())));
+      setText(apEls.faith, SG.fixJosa(SG.faith(S, ap, Date.now())) + (ap.blessN > 0 ? ' · ✦ 별의 가호 (' + ap.blessN + '번 남음)' : ''));
       const pt = SG.partyOf(S, ap);
       setHTML(apEls.party, pt ? '⚔ 파티 <b>' + esc(pt.name) + '</b> · ' + SG.partyMembers(S, ap).map(m => EMBLEMS[m.patron] + ' ' + esc(m.name) + ' Lv.' + m.lvl).join(' · ') + ' <small>(승리 ' + pt.wins + ')</small>' : '<small>혼자 모험 중</small>');
       setText($('#adv-sub'), '반물질 생산 +' + (ap.lvl * 0.5).toFixed(1) + '%');
@@ -1063,15 +1082,19 @@
     statRows($('#saga-stats'), [
       ['운명 사건', fmtInt(g.stats.fates) + '회'], ['전조', fmtInt(g.stats.omens) + '회'], ['사도의 죽음', fmtInt(g.stats.deaths)], ['배신', fmtInt(g.stats.betrayals)],
       ['타락', fmtInt(g.stats.falls)], ['구원', fmtInt(g.stats.redeemed || 0)], ['결성된 파티', fmtInt(g.stats.parties || 0)],
-      ['성좌들이 가져간 반물질', fmt(g.stats.taken), true], ['자리 비운 사이 거둬 간 공물', fmt(g.stats.tribute || 0)]
+      ['운명 사건 중 성좌들이 불태운 반물질', fmt(g.stats.taken), true], ['자리 비운 사이 성좌들이 거둬 간 공물', fmt(g.stats.tribute || 0)]
     ]);
   }
 
   function onSaga(p) {
     if (p.kind === 'fateDone') return onFateDone(p);
     if (!started) return;
-    if (p.c === selConst && tab === 'stars' && subTab.stars === 'sanct' && p.text && !['battle', 'take'].includes(p.kind)) {
-      showBubble(nums(p.kind === 'voice' ? p.text.replace(/^성좌 '[^']+'(이|가)\s*/, '') : p.text), ['death', 'fall', 'betray'].includes(p.kind) ? 'angry' : ['pick', 'level', 'sponsor', 'save'].includes(p.kind) ? 'cheer' : null);
+    const watching = p.c === selConst && tab === 'stars' && subTab.stars === 'sanct' && p.text;
+    const quote = p.text && (p.text.match(/“(.+)”/) || [])[1];
+    // 성좌의 말은 성소 말풍선, 사도의 대답은 모험 화면 말풍선
+    if (watching && p.kind === 'reply') showAdvBubble(nums(quote || p.text));
+    else if (watching && !['battle', 'take', 'deed', 'party', 'omen'].includes(p.kind)) {
+      showBubble(nums(quote || p.text), ['death', 'fall', 'betray', 'shadow'].includes(p.kind) ? 'angry' : ['pick', 'level', 'sponsor', 'save', 'gift', 'redeem'].includes(p.kind) ? 'cheer' : null);
     }
     const icon = { death: '🪦', fall: '😈', betray: '🗡', pick: '✨', redeem: '🕊' }[p.kind];
     if (icon) { toast(esc(nums(p.text)), icon, ['pick', 'redeem'].includes(p.kind) ? 'gold' : 'red'); if (!['pick', 'redeem'].includes(p.kind)) sfx.error(); else sfx.achieve(); }
@@ -1279,7 +1302,7 @@
   function sagaAwayHTML(g) {
     if (!g) return '';
     const tr = g.tribute ? '<div class="modal-box"><h4>성좌들이 거둬 간 공물</h4><b style="color:#ffb27a">반물질 −' + fmt(g.tribute.total) + '</b> <small>(획득량의 ' + Math.round(g.tribute.frac * 100) + '%)</small><br>' +
-      g.tribute.parts.map(x => EMBLEMS[x.i] + ' ' + esc(D.constellations[x.i].name) + ' ' + fmt(x.amount)).join(' · ') + '<br><small>성좌들은 이 성력으로 자리를 비운 동안 사도를 돌봤습니다.</small></div>' : '';
+      g.tribute.parts.map(x => EMBLEMS[x.i] + ' ' + esc(D.constellations[x.i].name) + ' 성력 +' + fmtU(x.units || 0)).join(' · ') + '<br><small>성좌들은 이 성력으로 사도를 돌봅니다.</small></div>' : '';
     if (!(g.fates || g.deaths || g.falls || g.betrayals || g.redeemed || g.parties || g.highlights.length)) return tr;
     return tr + '<div class="modal-box"><h4>' + (S.constellations.filter(c => c.apostleFound).length > 1 ? '그동안 성좌들 사이에서는…' : '그동안 성좌의 세계에서는…') + '</h4>운명 사건 ' + g.fates + '회 · 사도의 죽음 ' + g.deaths + ' · 배신 ' + g.betrayals + ' · 타락 ' + g.falls + ' · 구원 ' + (g.redeemed || 0) + ' · 파티 결성 ' + (g.parties || 0) +
       (g.highlights.length ? '<br><br>' + g.highlights.map(t => '· ' + esc(t)).join('<br>') : '') + '</div>';

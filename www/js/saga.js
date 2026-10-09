@@ -9,15 +9,18 @@
   const CD = root.CD = root.CD || {};
   const BigNum = CD.BigNum;
   const SD = CD.sagaData;
+  const TK = () => CD.talk;
   const core = () => CD.core;
 
   const TICK = 15;                // 서사 한 걸음 (초)
   const MOMENTUM = 80;
   const COOLDOWN = 60;            // 사건 직후 긴장도를 −60으로 내려 같은 사건이 바로 반복되지 않게 한다
   const P_BASE = 0.0001, P_MAX = 0.7, P_MID = 110, P_W = 8, CHECK_EVERY = 4;
-  const MAX_FREE = 10, MAX_FEED = 140, MAX_HALL = 30, MAX_FALLEN = 5;
-  const TRIBUTE = 0.1;             // 앱을 꺼 둔 동안 성좌들이 거둬 가는 몫 (오프라인 획득량 대비)
+  const MAX_FREE = 10, MAX_FEED = 140, MAX_HALL = 30, MAX_FALLEN = 4;
+  const TRIBUTE = 0.15;            // 앱을 꺼 둔 동안 성좌들이 거둬 가는 몫 (오프라인 획득량 대비)
   const PARTY_MAX = 4;
+  const POWER_CAP = 1e6;           // 성력 상한 (생산 초 단위)
+  const TIERS = [30, 50, 70, 90];   // 타락도가 이 선을 넘을 때마다 성좌가 말을 건다
   const rnd = () => core().random();
   const pick = arr => arr[Math.floor(rnd() * arr.length)];
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -43,7 +46,7 @@
     return {
       people: [], nextId: 1,
       patrons: [0, 0, 0, 0, 0, 0, 0, 0],
-      power: Array.from({ length: 8 }, () => new BigNum(0)),
+      power: [0, 0, 0, 0, 0, 0, 0, 0], powerV: 2, talkRecent: [], omenRecent: [],
       fame: [0, 0, 0, 0, 0, 0, 0, 0],
       tension: Object.fromEntries(SD.fates.map(f => [f.id, 0])),
       feed: [], hall: [],
@@ -86,6 +89,7 @@
     recruit: { text: '타락한 자를 따라 어둠으로 걸어 들어갔습니다.', short: '추종자가 되어', grudge: 1 }
   };
   function corruptBy(p, amount, src, by) {
+    if (amount > 0 && p.blessN > 0) amount *= 0.5;   // 별의 가호가 어둠을 절반 막는다
     p.corrupt += amount;
     if (amount <= 0) return;
     p.cs = p.cs || {};
@@ -98,12 +102,121 @@
     return best;
   }
 
+  /* ───────────── 성좌와 사도의 대화 ───────────── */
+
+  // 지금 벌어진 일로 대화의 빈칸을 채운다
+  function talkCtx(s, p, c, extra) {
+    const g = s.saga, region = p.act && p.act.region !== undefined ? p.act.region : regionFor(p);
+    const mon = p.act && p.act.monster ? SD.monsters.find(m => m.id === p.act.monster) : null;
+    const mate = p.party ? partyMembers(s, p).find(m => m !== p) : null;
+    const lost = g.hall.filter(h => h.patron === c && h.name !== p.name).pop();
+    const ctx = {
+      A: p.name, S: cname(c), R: SD.regions[region].name, X: mon ? mon.name : pick(SD.monsters.filter(m => !m.party && m.lvl <= p.lvl / 2 + 1)).name,
+      L: p.lvl, N: Math.floor(Math.min(100, p.corrupt)), B: 12,
+      F: extra.whisper || (p.csBy && fallen(s).some(f => f.name === p.csBy) ? p.csBy : ''),
+      M: mate ? mate.name : '', MS: mate ? cname(mate.patron) : '', H: lost ? lost.name : ''
+    };
+    for (const k in extra) if (/^[A-Z]{1,2}$/.test(k) && extra[k] !== undefined) ctx[k] = extra[k];
+    return ctx;
+  }
+  // 사도의 태도: 충성·타락·기질·주제에 따라 받아들이거나, 의심하거나, 반발한다
+  function stance(s, p, c, topic) {
+    let base = 0.3 + p.loyal / 200 - p.corrupt / 220 + (traitOf(p).likes.includes(c) ? 0.15 : 0);
+    base += { gift: 0.3, win: 0.25, saved: 0.25, party: 0.1, idle: 0.2, memory: 0.1, empty: -0.15 }[topic] || 0;
+    const r = rnd();
+    return r < base ? 'accept' : r < base + 0.35 ? 'doubt' : 'defy';
+  }
+  const CASUAL = ['idle', 'memory', 'watch', 'win', 'saved', 'empty'];
+  /** 대화 한 차례: 성좌가 말하고 사도가 대답하며, 그 결과가 실제로 충성·타락을 움직인다 */
+  function talk(s, p, topic, extra, now) {
+    const t = TK();
+    if (!t || !p) return null;
+    const g = s.saga, recent = g.talkRecent || (g.talkRecent = []);
+    const c = extra.from !== undefined ? extra.from : p.patron;
+    if (c < 0 || !awake(s, c)) return null;
+    // 급하지 않은 대화는 아껴 쓴다: 사도마다 5분, 전체로는 45초에 한 번까지
+    if (CASUAL.includes(topic) && (now - (g.talkLast || 0) < 45000 || now - (p.talkAt || 0) < 5 * 60000)) return null;
+    g.talkLast = now;
+    const ctx = talkCtx(s, p, c, extra);
+    const say = (txt, kind = 'talk', who = c) => { if (txt) feed(s, kind, kind === 'reply' ? p.name + ': “' + txt + '”' : kind === 'deed' ? txt : '성좌 \'' + cname(who) + '\': “' + txt + '”', who, now, { a: p.id }); return !!txt; };
+    const starLine = (tp, opts) => t.star(c, tp, ctx, rnd, recent, opts);
+    const reply = (tp, st) => t.apostle(p.trait, tp, st, ctx, rnd, recent);
+    p.talkAt = now;
+    let st = null;
+    switch (topic) {
+      case 'warn': {
+        const cause = extra.whisper ? 'whisper' : mainCause(p);
+        const key = p.corrupt >= 70 && rnd() < 0.5 ? 'warn_high' : 'warn_' + (cause === 'recruit' || cause === 'neglect' || t.STAR['warn_' + cause] ? cause : 'dark');
+        say(starLine(key) || starLine('warn_dark'));
+        st = stance(s, p, c, 'warn');
+        say(reply('warn', st), 'reply', p.patron);
+        if (st === 'accept') {
+          const d = Math.round(6 + rnd() * 6); p.corrupt = Math.max(0, p.corrupt - d); p.loyal = clamp(p.loyal + 4, 0, 100);
+          if (rnd() < 0.5 && spend(s, c, 8)) { p.corrupt = Math.max(0, p.corrupt - 10); say(t.deed('purify', Object.assign(ctx, { G: 8, D: 10 }), rnd, recent), 'deed'); }
+        } else if (st === 'doubt') {
+          if (spend(s, c, 8)) { say(starLine('follow', { noCall: true })); p.corrupt = Math.max(0, p.corrupt - 12); p.loyal = clamp(p.loyal + 2, 0, 100); say(t.deed('purify', Object.assign(ctx, { G: 8, D: 12 }), rnd, recent), 'deed'); }
+          else p.loyal = clamp(p.loyal - 2, 0, 100);
+        } else {
+          const d = Math.round(3 + rnd() * 4); corruptBy(p, d, cause === 'whisper' ? 'whisper' : 'neglect', extra.whisper); p.loyal = clamp(p.loyal - 6, 0, 100);
+          say(t.deed('backfire', Object.assign(ctx, { D: d }), rnd, recent), 'deed');
+        }
+        break;
+      }
+      case 'empty': {
+        say(reply('complain'), 'reply', p.patron);
+        say(starLine('empty'));
+        st = stance(s, p, c, 'empty');
+        say(reply('empty', st), 'reply', p.patron);
+        p.loyal = clamp(p.loyal - (st === 'defy' ? 5 : st === 'doubt' ? 2 : 0), 0, 100);
+        p.promise = true;
+        say(t.deed('empty', ctx, rnd, recent), 'deed');
+        break;
+      }
+      case 'gift': {
+        say((p.promise && t.star(c, 'gift_promise', ctx, rnd, recent)) || starLine('gift'));
+        p.promise = false;
+        st = stance(s, p, c, 'gift');
+        say(reply('gift', st), 'reply', p.patron);
+        break;
+      }
+      case 'win': case 'saved': {
+        say(starLine(topic) || starLine('win'));
+        st = stance(s, p, c, topic);
+        say(reply('win', st), 'reply', p.patron);
+        if (st === 'accept') p.loyal = clamp(p.loyal + 3, 0, 100);
+        break;
+      }
+      case 'party': {
+        const mate = partyMembers(s, p).find(m => m !== p && m.patron !== c);
+        if (!mate) return null;
+        Object.assign(ctx, { M: mate.name, MS: cname(mate.patron) });
+        const mood = rivals(c, mate.patron) ? 'rival' : traitOf(p).likes.includes(mate.patron) || traitOf(mate).likes.includes(c) ? 'friend' : 'neutral';
+        say(starLine('party_' + mood));
+        // 동료의 성좌가 끼어든다: 성좌끼리의 말다툼 혹은 화답
+        if (awake(s, mate.patron)) say(t.star2(mate.patron, mood, Object.assign({}, ctx, { S: cname(c) }), rnd, recent), 'talk', mate.patron);
+        st = stance(s, p, c, 'party');
+        say(reply('party', st), 'reply', p.patron);
+        break;
+      }
+      case 'memory': case 'idle': {
+        if (topic === 'memory' && !ctx.H) topic = 'idle';
+        if (!say(starLine(topic))) return null;
+        if (rnd() < 0.6) { st = stance(s, p, c, topic); say(reply(topic, st), 'reply', p.patron); }
+        break;
+      }
+      default:
+        // lost · betrayed · redeem · watch: 성좌 혼자 하는 말
+        if (!say(starLine(topic))) return null;
+    }
+    return st || topic;
+  }
+
   /** 사도가 자기 성좌를 어떻게 여기는지 (카드에 한 줄로 보여 준다) */
   function faith(s, p, now = Date.now()) {
     if (p.status !== 'apostle') return '';
     const c = '\'' + cname(p.patron) + '\'';
     if (p.corrupt >= 70) return '어둠의 목소리가 ' + c + '보다 크게 들립니다';
-    if (now - p.sponsorAt > TICK * 1000 * 8) return '성좌 ' + c + '이(가) 자신을 잊었다고 생각합니다';
+    if (now - p.sponsorAt > TICK * 1000 * 20) return '성좌 ' + c + '이(가) 자신을 잊었다고 생각합니다';
     if (p.loyal >= 85) return '성좌 ' + c + '을(를) 온전히 믿습니다';
     if (p.loyal >= 50) return '성좌 ' + c + '을(를) 따릅니다';
     return '성좌 ' + c + '을(를) 의심하고 있습니다';
@@ -172,7 +285,8 @@
     }
   }
   function xpNeed(lvl) { return Math.floor(40 * Math.pow(lvl, 1.4)); }
-  function power(p) { return p.atk * 2 + p.def + p.lvl * 3 + p.luck; }
+  function power(p) { return (p.atk * 2 + p.def + p.lvl * 3 + p.luck) * (p.blessN > 0 ? 1.5 : 1); }
+  function useBless(p) { if (p.blessN > 0) p.blessN--; }
 
   /* ───────────── 영향력 · 몸값 ───────────── */
 
@@ -182,7 +296,7 @@
     const score = s.constellations.map((c, i) => {
       if (!c.apostleFound) return 0;
       const ap = apostleOf(s, i);
-      return 3 + c.level * 2 + Math.max(0, g.power[i].log10()) * 0.08 + (ap ? ap.lvl * 0.35 : 0) + Math.max(0, g.fame[i]) * 0.25;
+      return 3 + c.level * 2 + Math.log10(1 + g.power[i]) * 0.5 + (ap ? ap.lvl * 0.35 : 0) + Math.max(0, g.fame[i]) * 0.25;
     });
     const sum = score.reduce((a, b) => a + b, 0);
     return score.map(v => (sum ? v / sum : 0));
@@ -193,25 +307,48 @@
 
   /* ───────────── 성력 (성좌의 재화) ───────────── */
 
-  /** 성좌에게 반물질이 흘러 들어간다 (플레이어 공물 또는 사건 중 강탈). 각성·레벨 진행에도 쓰인다. */
-  function offer(s, i, amount, now) {
-    if (amount.isZero()) return;
-    s.saga.power[i] = s.saga.power[i].add(amount);
+  // 성력은 '내 생산 몇 초 분량'으로 센다. 반물질 규모(1e250 같은)와 상관없이 읽을 수 있는 크기가 된다.
+  function units(s, amount, now) {
+    const prod = core().production(s, now);
+    const d = prod.gt(0) ? prod : BigNum.max(s.matter.div(60), 1);
+    const u = amount.div(d).toNumber();
+    return Number.isFinite(u) ? clamp(u, 0, POWER_CAP) : POWER_CAP;
   }
+  const fmtU = n => (n < 10 ? (Math.round(n * 10) / 10).toString() : Math.round(n).toLocaleString('ko-KR'));
+  /** 성좌에게 공물이 들어온다 (플레이어 공물, 자리를 비운 사이 거둬 간 공물) — 사도 후원의 재원 */
+  function offer(s, i, amount, now) {
+    if (!amount || amount.isZero()) return 0;
+    const u = units(s, amount, now);
+    s.saga.power[i] = Math.min(POWER_CAP, s.saga.power[i] + u);
+    return u;
+  }
+  function spend(s, i, u) { if (s.saga.power[i] < u) return false; s.saga.power[i] -= u; return true; }
 
+  /** 후원: 정해진 성력을 써서 사도를 강하게 한다. 성력이 넉넉하면 가끔 '대후원'으로 가호를 내린다. */
   function sponsor(s, p, now) {
-    const i = p.patron, pool = s.saga.power[i];
-    if (pool.isZero()) return false;
-    const amount = pool.mul(0.12);
-    s.saga.power[i] = pool.sub(amount);
-    const bonus = Math.max(1, Math.round((1 + Math.floor(Math.max(0, amount.log10()) / 40)) * priceMult(s, i)));
-    addFame(s, i, 0.5);
-    p.atk += bonus; p.maxHp += 4 * bonus; p.hp = Math.min(p.maxHp, p.hp + Math.round(p.maxHp * 0.3));
-    p.loyal = clamp(p.loyal + 7 * traitOf(p).loyal, 0, 100);
-    p.corrupt = Math.max(0, p.corrupt - 2);
+    const i = p.patron, g = s.saga, pool = g.power[i];
+    const cost = 0.3 + p.lvl * 0.01;
+    if (pool < cost) return false;
+    const grandCost = 10 + p.lvl * 0.3;
+    const crisis = p.corrupt >= 50 || p.hp < p.maxHp * 0.3;
+    const grand = pool >= grandCost * 3 && !(p.blessN > 0) && rnd() < (crisis ? 0.25 : 0.05);
+    const used = grand ? grandCost : cost;
+    g.power[i] -= used;
+    const bonus = Math.max(1, Math.round(priceMult(s, i) * (1 + p.lvl / 20) * (grand ? 4 : 1.5)));
+    addFame(s, i, grand ? 3 : 0.5);
+    p.atk += bonus; p.maxHp += 4 * bonus;
+    const heal = grand ? 100 : 30;
+    p.hp = Math.min(p.maxHp, p.hp + Math.round(p.maxHp * heal / 100));
+    p.loyal = clamp(p.loyal + (grand ? 15 : 7) * traitOf(p).loyal, 0, 100);
+    const cut = grand ? 15 : 3;
+    p.corrupt = Math.max(0, p.corrupt - cut);
     p.sponsorAt = now;
-    p.act = { kind: 'sponsor', t: now };
-    feed(s, 'sponsor', '성좌 \'' + cname(i) + '\'이(가) 사도 ' + p.name + '에게 ' + core().fmtShort(amount) + ' 성력을 후원했습니다.', i, now, { a: p.id });
+    if (grand) { p.blessN = 12; p.act = { kind: 'gift', t: now }; } else p.act = { kind: 'sponsor', t: now };
+    const fx = '공격 +' + bonus + ' · 최대 체력 +' + 4 * bonus + ' · 체력 +' + heal + '%' + (grand ? ' · 타락 −' + cut + ' · 12번의 싸움 동안 별의 가호' : '');
+    if (grand) {
+      feed(s, 'gift', '✦ 대후원 ✦ 성좌 \'' + cname(i) + '\'이(가) 성력 ' + fmtU(used) + '을(를) 쏟아 ' + p.name + '에게 별의 가호를 내렸습니다 — ' + fx, i, now, { a: p.id, big: true });
+      talk(s, p, 'gift', { G: fmtU(used) }, now);
+    } else if (rnd() < 0.3) feed(s, 'sponsor', '성좌 \'' + cname(i) + '\'이(가) ' + p.name + '에게 성력 ' + fmtU(used) + '을(를) 내렸습니다 — ' + fx, i, now, { a: p.id });
     return true;
   }
 
@@ -232,6 +369,7 @@
     const mLvl = Math.max(1, p.lvl + Math.floor(rnd() * 6) - 2);
     const mPow = (10 + mLvl * 7) * (1 + m.lvl * 0.12) * (reg.dark ? 1.25 : 1);
     const win = rnd() < clamp(power(p) / (power(p) + mPow) + 0.18, 0.12, 0.95);
+    useBless(p);
     const dmg = Math.round(p.maxHp * (win ? 0.04 + rnd() * 0.16 : 0.25 + rnd() * 0.3));
     p.hp -= dmg;
     if (m.dark || reg.dark) corruptBy(p, (2 + rnd() * 3) * traitOf(p).corrupt, 'dark');
@@ -248,12 +386,14 @@
   }
 
   function nearDeath(s, p, now, cause) {
-    const i = p.patron, pool = s.saga.power[i];
-    if (i >= 0 && !pool.isZero() && rnd() < 0.75) {
-      s.saga.power[i] = pool.mul(0.6);
+    const i = p.patron;
+    const paid = i >= 0 && s.saga.power[i] >= 2;
+    if (i >= 0 && rnd() < (paid ? 0.75 : 0.4)) {
+      if (paid) s.saga.power[i] -= 2; else addFame(s, i, -2);
       p.hp = Math.round(p.maxHp * 0.3);
       p.act = { kind: 'saved', t: now };
-      feed(s, 'save', '성좌 \'' + cname(i) + '\'이(가) 쓰러지는 ' + p.name + '에게 성력을 쏟아부어 목숨을 붙잡았습니다.', i, now, { a: p.id });
+      feed(s, 'save', '성좌 \'' + cname(i) + '\'이(가) 쓰러지는 ' + p.name + (paid ? '에게 성력 2를 쏟아부어' : '을(를) 제 별빛을 깎아') + ' 목숨을 붙잡았습니다.', i, now, { a: p.id });
+      if (rnd() < 0.5) talk(s, p, 'saved', { X: cause }, now);
       return;
     }
     if (rnd() < 0.35) { die(s, p, now, cause); return; }
@@ -268,7 +408,7 @@
     s.saga.stats.deaths++;
     addFame(s, i, -6);
     feed(s, 'death', '사도 ' + p.name + '(Lv.' + p.lvl + ')이(가) ' + (cause ? cause + '에게 ' : '') + '쓰러졌습니다. 그의 이름이 명예의 전당에 새겨집니다.', i, now, { a: p.id, big: true });
-    if (i >= 0) feed(s, 'voice', SD.voices[i].angry, i, now);
+    if (i >= 0) talk(s, p, 'lost', { X: cause }, now);
     toHall(s, p, 'dead', now);
   }
 
@@ -300,7 +440,7 @@
       p.patron = to; s.saga.patrons[to] = p.id; p.loyal = 50 + Math.floor(rnd() * 20);
       p.act = { kind: 'betray', t: now };
       feed(s, 'betray', '사도 ' + p.name + '이(가) 성좌 \'' + cname(from) + '\'을(를) 배신하고 성좌 \'' + cname(to) + '\'의 손을 잡았습니다!', from, now, { a: p.id, big: true, to });
-      feed(s, 'voice', SD.voices[from].angry, from, now);
+      talk(s, p, 'betrayed', { from, MS: cname(to) }, now);
     } else {
       p.status = 'free'; p.patron = -1; p.loyal = 40;
       feed(s, 'betray', '사도 ' + p.name + '이(가) 성좌 \'' + cname(from) + '\'의 곁을 떠났습니다. ' + (t.betray > 1 ? '뒤도 돌아보지 않았습니다.' : '눈물을 흘리며.'), from, now, { a: p.id, big: true });
@@ -320,12 +460,20 @@
   /** 성좌와의 관계: 후원, 충성, 방치, 타락, 배신 */
   function life(s, p, now) {
     if (p.status !== 'apostle') return;
-    const neglected = now - p.sponsorAt > TICK * 1000 * 8;
-    if (neglected) { p.loyal -= 0.6 / traitOf(p).loyal; corruptBy(p, 0.3 * traitOf(p).corrupt, 'neglect'); }
+    const neglected = now - p.sponsorAt > TICK * 1000 * 20;
+    if (neglected) { p.loyal -= 0.25 / traitOf(p).loyal; corruptBy(p, 0.12 * traitOf(p).corrupt, 'neglect'); }
     else p.corrupt = Math.max(0, p.corrupt - 0.3);
-    if (now - p.sponsorAt > TICK * 1000 * 4 && rnd() < 0.5) sponsor(s, p, now);
+    if (now - p.sponsorAt > TICK * 1000 * 12 && rnd() < 0.5) sponsor(s, p, now);
     p.loyal = clamp(p.loyal, 0, 100);
     if (p.corrupt >= 100) { fall(s, p, now); return; }
+    // 타락도가 선을 넘으면 성좌가 말을 건다 (내려갔다가 다시 넘으면 또 말한다)
+    const mark = p.cmark || 0, next = TIERS.find(t => t > mark && p.corrupt >= t);
+    if (next) { p.cmark = Math.max(...TIERS.filter(t => p.corrupt >= t)); talk(s, p, 'warn', {}, now); if (p.status !== 'apostle') return; }
+    else if (p.corrupt < mark - 15) p.cmark = TIERS.filter(t => p.corrupt >= t).pop() || 0;
+    const quiet = now - (p.talkAt || 0) > 4 * 60000;
+    if (neglected && quiet && now - (p.emptyAt || 0) > 15 * 60000 && s.saga.power[p.patron] < 0.3 + p.lvl * 0.01 && now - p.sponsorAt > TICK * 1000 * 24) { p.emptyAt = now; talk(s, p, 'empty', {}, now); }
+    else if (now - (p.talkAt || 0) > 6 * 60000 && rnd() < 0.02) talk(s, p, rnd() < 0.3 ? 'memory' : 'idle', {}, now);
+    if (p.status !== 'apostle') return;
     if (p.loyal < 25 && rnd() < 0.04 * traitOf(p).betray) betray(s, p, now);
   }
 
@@ -335,25 +483,26 @@
   function fallenAct(s, p, now) {
     const g = s.saga, i = p.patron, grudge = p.grudge || 1;
     if (rnd() > 0.04 + 0.015 * grudge) return null;
-    const aps = livingApostles(s), canSteal = i >= 0 && awake(s, i) && !g.power[i].isZero();
+    const aps = livingApostles(s), canSteal = i >= 0 && awake(s, i) && g.power[i] >= 1;
     const canRecruit = fallen(s).length < MAX_FALLEN && free(s).length > 0 && p.cause !== 'recruit';
-    const w = { steal: canSteal ? 0.3 + 0.15 * grudge : 0, whisper: aps.length ? 0.4 : 0, recruit: canRecruit ? 0.15 : 0 };
+    const w = { steal: canSteal ? 0.3 + 0.15 * grudge : 0, whisper: aps.length ? 0.3 : 0, recruit: canRecruit ? 0.1 : 0 };
     let r = rnd() * (w.steal + w.whisper + w.recruit), kind = null;
     for (const k in w) { r -= w[k]; if (r < 0 && w[k] > 0) { kind = k; break; } }
     if (!kind) return null;
     g.tension.rebellion += 1;
     if (kind === 'steal') {
-      const amt = g.power[i].mul(0.05 * grudge);
-      g.power[i] = g.power[i].sub(amt);
+      const amt = g.power[i] * 0.05 * grudge;
+      g.power[i] -= amt;
       addFame(s, i, -1);
-      feed(s, 'shadow', '타락한 ' + p.name + '이(가) 옛 주인 \'' + cname(i) + '\'의 성소에 숨어들어 성력을 ' + core().fmtShort(amt) + '만큼 훔쳤습니다.', i, now, { a: p.id });
+      feed(s, 'shadow', '타락한 ' + p.name + '이(가) 옛 주인 \'' + cname(i) + '\'의 성소에 숨어들어 성력 ' + fmtU(amt) + '을(를) 훔쳤습니다.', i, now, { a: p.id });
     } else if (kind === 'whisper') {
       const t = aps.slice().sort((a, b) => a.loyal - b.loyal).slice(0, 2);
-      const v = pick(t), amt = (6 + 2 * grudge) * traitOf(v).corrupt;
+      const v = pick(t), amt = (3 + 1.5 * grudge) * traitOf(v).corrupt;
       corruptBy(v, amt, 'whisper', p.name);
       v.loyal = clamp(v.loyal - 3, 0, 100);
       feed(s, 'shadow', '타락한 ' + p.name + '이(가) 사도 ' + v.name + '의 꿈속에서 속삭입니다. (타락 ' + Math.floor(Math.min(100, v.corrupt)) + ')', v.patron, now, { a: v.id });
       if (v.corrupt >= 100) fall(s, v, now);
+      else if (rnd() < 0.7) talk(s, v, 'warn', { whisper: p.name }, now);
     } else {
       const q = free(s).slice().sort((a, b) => b.corrupt - a.corrupt)[0];
       q.status = 'fallen'; q.patron = i; q.cause = 'recruit'; q.grudge = 1; q.corrupt = 100; q.title = p.name + '의 추종자';
@@ -382,6 +531,7 @@
     const T = team.reduce((a, p) => a + power(p), 0) * (1 + 0.08 * (team.length - 1));
     const F = power(f) * (1 + 0.15 * (f.grudge || 1)) * 1.6;
     const win = rnd() < clamp(T / (T + F) + 0.1, 0.1, 0.92);
+    team.forEach(useBless);
     const who = team.length > 1 ? '파티 \'' + partyOf(s, hunter).name + '\'' : '사도 ' + hunter.name;
     const foe = { look: f.look, cls: f.cls, corrupt: 100, status: 'fallen' };
     team.forEach(p => {
@@ -392,6 +542,7 @@
     let out;
     if (win) {
       team.forEach(p => { p.xp += xpNeed(p.lvl) * 0.8; p.deeds += 2; levelUp(s, p, now); });
+      if (rnd() < 0.5) talk(s, hunter, 'win', { X: '타락한 ' + f.name }, now);
       addFame(s, hunter.patron, isOwn ? 8 : 5);
       const redeem = rnd() < (f.cause === 'recruit' ? 0.6 : isOwn ? 0.55 : 0.25) + (f.cause === 'neglect' && isOwn ? 0.1 : 0);
       if (redeem) {
@@ -401,7 +552,7 @@
         feed(s, 'redeem', isOwn
           ? '성좌 \'' + cname(hunter.patron) + '\'이(가) ' + who + '을(를) 보내 잃었던 ' + f.name + '을(를) 되찾았습니다. ' + f.name + '은(는) 다시 세계로 돌아갑니다.'
           : who + '이(가) 타락한 ' + f.name + '을(를) 꺾고 구원했습니다. ' + (from >= 0 ? '성좌 \'' + cname(from) + '\'의 옛 사도였습니다.' : ''), hunter.patron, now, Object.assign(extra, { big: true }));
-        feed(s, 'voice', SD.voices[hunter.patron].like, hunter.patron, now);
+        if (isOwn) talk(s, hunter, 'redeem', { F: f.name }, now);
         out = 'redeem';
       } else {
         feed(s, 'hunt', who + '이(가) 타락한 ' + f.name + '을(를) 쓰러뜨렸습니다. 검은 별빛이 흩어져 사라집니다.', hunter.patron, now, Object.assign(extra, { big: true }));
@@ -476,6 +627,7 @@
     const all = [lead, ...mates];
     all.forEach(p => { p.party = q.id; });
     feed(s, 'party', '사도 ' + names(all) + '이(가) 파티 \'' + name + '\'을(를) 결성했습니다.', lead.patron, now, { a: lead.id, cs: all.map(p => p.patron) });
+    if (mates.some(m => m.patron !== lead.patron)) talk(s, lead, 'party', {}, now);
     return q;
   }
   /** 파티 전투: 인원과 평균 레벨에 맞춰 더 강한 몬스터를 부른다. 승률은 혼자 싸울 때와 비슷하게, 보상은 크게. */
@@ -489,7 +641,7 @@
       return 'rest';
     }
     const avgLvl = ms.reduce((a, p) => a + p.lvl, 0) / n;
-    const region = regionFor({ lvl: avgLvl + 3 * n, corrupt: Math.max(...ms.map(p => p.corrupt)) }), reg = SD.regions[region];
+    const region = regionFor({ lvl: avgLvl + n, corrupt: Math.max(...ms.map(p => p.corrupt)) }), reg = SD.regions[region];
     const pool = SD.monsters.filter(m => m.lvl <= avgLvl / 2 + 1 + n && (!m.dark || reg.dark || rnd() < 0.2)).sort((a, b) => b.lvl - a.lvl).slice(0, 3);
     const m = pick(pool.length ? pool : SD.monsters.slice(0, 3));
     const elite = rnd() < 0.12;
@@ -497,10 +649,11 @@
     const mPow = (10 + mLvl * 7) * (1 + m.lvl * 0.12) * (reg.dark ? 1.25 : 1) * n * 0.75 * (elite ? 1.6 : 1);
     const P = ms.reduce((a, p) => a + power(p), 0) * (1 + 0.08 * (n - 1));
     const win = rnd() < clamp(P / (P + mPow) + 0.18, 0.12, 0.95);
+    ms.forEach(useBless);
     ms.forEach(p => {
       const dmg = Math.round(p.maxHp * (win ? 0.03 + rnd() * 0.12 : 0.2 + rnd() * 0.22));
       p.hp -= dmg;
-      if (m.dark || reg.dark) corruptBy(p, (1.5 + rnd() * 2) * traitOf(p).corrupt, 'dark');
+      if (m.dark || reg.dark) corruptBy(p, (1 + rnd() * 1.5) * traitOf(p).corrupt, 'dark');
       p.act = { kind: win ? 'win' : 'lose', t: now, monster: m.id, region, dmg, party: q.id, elite };
       if (win) { p.xp += (8 + mLvl * 5) * (elite ? 2 : 1); p.deeds++; }
     });
@@ -509,6 +662,7 @@
     const c = (person(s, q.leader) || ms[0]).patron;
     if (win) {
       q.wins++;
+      if (elite && rnd() < 0.6) talk(s, person(s, q.leader) || ms[0], 'win', { X: m.name }, now);
       if (elite || rnd() < 0.1) feed(s, 'party', tag + '이(가) ' + reg.name + '에서 ' + (elite ? '정예 ' : '') + 'Lv.' + mLvl + ' ' + m.name + '을(를) 쓰러뜨렸습니다.', c, now, extra);
     } else if (rnd() < 0.2) feed(s, 'party', tag + '이(가) ' + reg.name + '에서 Lv.' + mLvl + ' ' + m.name + '에게 밀려 물러났습니다.', c, now, extra);
     ms.forEach(p => { if (p.hp <= 0) nearDeath(s, p, now, m.name); else levelUp(s, p, now); });
@@ -526,8 +680,8 @@
     s.matter = s.matter.sub(total);
     s.saga.stats.tribute = s.saga.stats.tribute.add(total);
     const parts = list.map(i => ({ i, amount: total.mul(inf[i]) })).sort((a, b) => inf[b.i] - inf[a.i]);
-    parts.forEach(x => offer(s, x.i, x.amount, now));
-    feed(s, 'tribute', '자리를 비운 사이 성좌들이 공물을 거둬 갔습니다: ' + parts.map(x => cname(x.i) + ' ' + core().fmtShort(x.amount)).join(' · '), -1, now, { cs: list });
+    parts.forEach(x => { x.units = offer(s, x.i, x.amount, now); });
+    feed(s, 'tribute', '자리를 비운 사이 성좌들이 공물을 거둬 갔습니다: ' + parts.map(x => cname(x.i) + ' 성력 +' + fmtU(x.units)).join(' · '), -1, now, { cs: list });
     return { total, frac: TRIBUTE, parts };
   }
 
@@ -607,12 +761,15 @@
     const list = SD.omens.filter(o => omenReady(s, o));
     if (!list.length) return;
     // 빌드업: 이미 긴장이 쌓인 사건의 전조일수록 더 자주 일어난다 (눈덩이처럼 굴러간다)
-    const T = s.saga.tension;
-    const weight = o => (o.big ? 0.22 : 1) * (1 + Object.keys(o.add).reduce((a, id) => a + o.add[id] * Math.max(0, T[id] || 0), 0) / MOMENTUM);
+    const T = s.saga.tension, recent = s.saga.omenRecent || (s.saga.omenRecent = []);
+    // 최근에 나온 전조는 한동안 거의 나오지 않는다 (같은 말 반복 방지)
+    const weight = o => (o.big ? 0.22 : 1) * (recent.includes(SD.omens.indexOf(o)) ? 0.04 : 1) * (1 + Object.keys(o.add).reduce((a, id) => a + o.add[id] * Math.max(0, T[id] || 0), 0) / MOMENTUM);
     let total = 0;
     for (const o of list) total += weight(o);
     let r = rnd() * total, o = list[0];
     for (const x of list) { r -= weight(x); if (r <= 0) { o = x; break; } }
+    recent.push(SD.omens.indexOf(o));
+    if (recent.length > 40) recent.splice(0, recent.length - 40);
     let text = o.text, target = null;
     if (text.includes('{A}')) {
       const cand = o.need === 'corrupt' ? livingApostles(s).filter(p => p.corrupt >= 30) : livingApostles(s);
@@ -630,7 +787,7 @@
     s.saga.stats.omens++;
     const top = Object.keys(o.add).sort((a, b) => o.add[b] - o.add[a])[0];
     feed(s, o.big ? 'omen-big' : 'omen', text, o.c >= 0 ? o.c : (target ? target.patron : -1), now, { fate: top, big: !!o.big, a: target ? target.id : undefined });
-    if (o.c >= 0 && rnd() < 0.3) feed(s, 'voice', SD.voices[o.c].watch, o.c, now);
+    if (o.c >= 0 && rnd() < 0.12) { const ap = apostleOf(s, o.c); if (ap) talk(s, ap, 'watch', {}, now); }
   }
 
   function checkFates(s, now) {
@@ -662,9 +819,8 @@
       st.taken = st.taken.add(taken);
       inv.slice().sort((a, b) => inf[b] - inf[a]).forEach(i => {
         const share = taken.mul(inf[i] / infSum);
-        offer(s, i, share, now);
-        core().absorb(s, i, share, now);
-        feed(s, 'take', '성좌 \'' + cname(i) + '\'(영향력 ' + (inf[i] * 100).toFixed(1) + '%)이(가) 당신의 우주에서 반물질을 ' + core().fmtShort(share) + '만큼 가져갔습니다.', i, now, { fate: f.id });
+        // 성좌는 빼앗은 반물질을 갖지 않는다: 그 자리에서 불태운다
+        feed(s, 'take', '성좌 \'' + cname(i) + '\'(영향력 ' + (inf[i] * 100).toFixed(1) + '%)이(가) 당신의 우주에서 반물질을 ' + core().fmtShort(share) + '만큼 거둬 그 자리에서 불태웠습니다.', i, now, { fate: f.id });
       });
     }
     inv.forEach(i => addFame(s, i, 3));
@@ -883,7 +1039,8 @@
         origin: str(p.origin, 30), lvl: Math.floor(num(p.lvl, 1, 999)), xp: num(p.xp, 0, 1e9), hp: num(p.hp, 0, 1e9), maxHp: num(p.maxHp, 1, 1e9), atk: num(p.atk, 1, 1e9), def: num(p.def, 0, 1e9), luck: num(p.luck, 0, 1e6),
         corrupt: num(p.corrupt, 0, 200), loyal: num(p.loyal, 0, 100), status, patron: Math.floor(num(p.patron, -1, 7)), title: str(p.title, 30), deeds: Math.floor(num(p.deeds, 0, 1e9)),
         sponsorAt: num(p.sponsorAt, 0, now), born: num(p.born, 0, now), act: { kind: 'idle', t: now }, look: Math.floor(num(p.look, 0, 1e9)),
-        cs: {}, party: Math.floor(num(p.party, 0, 1e9))
+        cs: {}, party: Math.floor(num(p.party, 0, 1e9)),
+        cmark: TIERS.includes(p.cmark) ? p.cmark : 0, talkAt: num(p.talkAt, 0, now), promise: p.promise === true, blessN: Math.floor(num(p.blessN, 0, 12))
       };
       if (p.cs && typeof p.cs === 'object') for (const k in CAUSE) if (p.cs[k]) q.cs[k] = num(p.cs[k], 0, 1e6);
       if (typeof p.csBy === 'string') q.csBy = p.csBy.slice(0, 20);
@@ -913,7 +1070,9 @@
     g.people.forEach(p => { p.party = seat.get(p.id) || 0; });
     g.nextParty = Math.max(num(raw.nextParty, 1, 1e9), ...g.parties.map(q => q.id + 1), 1);
     g.fame = g.fame.map((_, i) => num(Array.isArray(raw.fame) ? raw.fame[i] : 0, -50, 500));
-    g.power = g.power.map((_, i) => { try { return new BigNum(Array.isArray(raw.power) ? raw.power[i] : 0); } catch (e) { return new BigNum(0); } });
+    // 성력: 예전 세이브는 반물질 그대로 쌓여 있었다(1e249 같은 값) → 새 단위(생산 초)로 넘어오며 깨어난 성좌마다 60으로 맞춘다
+    g.power = raw.powerV === 2 && Array.isArray(raw.power) ? g.power.map((_, i) => num(raw.power[i], 0, POWER_CAP)) : g.power.map(() => 60);
+    g.talkRecent = (Array.isArray(raw.talkRecent) ? raw.talkRecent : []).filter(k => typeof k === 'string').slice(-160).map(k => k.slice(0, 40));
     if (raw.tension && typeof raw.tension === 'object') for (const f of SD.fates) g.tension[f.id] = num(raw.tension[f.id], -COOLDOWN, 1e6);
     g.feed = (Array.isArray(raw.feed) ? raw.feed : []).slice(-MAX_FEED).map(f => f && typeof f.text === 'string' ? {
       t: num(f.t, 0, now), kind: str(f.kind, 12) || 'info', text: f.text.slice(0, 200), c: Math.floor(num(f.c, -1, 7)), big: f.big === true,
@@ -937,7 +1096,7 @@
   CD.saga = {
     TICK, prob, fillName, fixJosa, influence, priceMult, takeFraction, fresh, revive, update, step, offline, prodMult, offer, omen, resolve, checkFates, fateReady, xpNeed, power,
     apostleOf, livingApostles, fallen, free, label, spawn, choose, ensureWorld,
-    CAUSE, corruptBy, faith, fallenAct, hunt, clash, partyOf, partyMembers, formParty, partyBattle, tribute, fall
+    CAUSE, corruptBy, faith, fallenAct, hunt, clash, partyOf, partyMembers, formParty, partyBattle, tribute, fall, talk, sponsor, units, POWER_CAP
   };
   if (typeof module === 'object' && module.exports) module.exports = CD.saga;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

@@ -581,6 +581,9 @@ canvas.frame-ico { padding: 0; width: 40px; height: 40px; border-radius: 10px; }
 .feed-row.big { color: #fff; border-left-color: var(--gold); background: linear-gradient(90deg, rgba(240, 160, 60, .16), rgba(0, 0, 0, .25)); }
 .feed-row.bad { color: #ffc0cc; border-left-color: var(--red); background: linear-gradient(90deg, rgba(255, 107, 138, .14), rgba(0, 0, 0, .25)); }
 .feed-row.take { color: #ffd4ad; border-left-color: var(--orange); }
+.feed-row.talk { color: #ffe9b8; border-left-color: var(--gold); }
+.feed-row.reply { color: #e6e9ff; border-left-color: #8fa0ff; padding-left: 18px; }
+#adv-bubble { left: 34%; top: 30%; max-width: 62%; }
 .fate-list { display: flex; flex-direction: column; gap: 6px; }
 .fate { display: grid; grid-template-columns: 34px 1fr auto; gap: 8px; align-items: center; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line-soft); background: rgba(0, 0, 0, .28); transition: border-color .3s, box-shadow .3s; }
 .fate.hot { border-color: rgba(255, 107, 138, .7); box-shadow: 0 0 16px rgba(255, 107, 138, .25); animation: hotPulse 1.4s ease-in-out infinite; }

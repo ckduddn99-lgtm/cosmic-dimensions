@@ -59,7 +59,7 @@
       skin: SKINS[Math.floor(r() * SKINS.length)], trim: ['#d3bc7a','#a7cddd','#d4a3c9','#acb998'][Math.floor(r()*4)], hair, cloth, cloth2: shade(cloth, 0.7), pants: shade(cloth, 0.5), boots: '#2a1d16',
       eye: corrupt >= 60 ? '#ff2a55' : '#1a1a2a', gear: c.gear, hood: c.id === 'hunter' || c.id === 'thief' || (c.id === 'mage' && r() < 0.5),
       helmet: c.id === 'knight' || c.id === 'warrior' && r() < 0.5, longHair: r() < 0.45,
-      aura: p.status === 'fallen' ? '#9b2bff' : corrupt >= 80 ? '#6a1fb0' : null
+      aura: p.status === 'fallen' ? '#9b2bff' : corrupt >= 80 ? '#6a1fb0' : p.blessN > 0 ? '#ffd36a' : null
     };
   }
 
@@ -666,7 +666,7 @@
     setParty(list) { this.allies = (list || []).slice(0, 3); }
     play(act, t) {
       if (act.region !== undefined) this.region = act.region;
-      const dur = { win: 2600, lose: 2600, rest: 3200, level: 1800, sponsor: 1800, saved: 1600, chosen: 2000, death: 99999999, fall: 2400, betray: 2200 }[act.kind];
+      const dur = { win: 2600, lose: 2600, rest: 3200, level: 1800, sponsor: 1800, gift: 3000, saved: 1600, chosen: 2000, death: 99999999, fall: 2400, betray: 2200 }[act.kind];
       if (!dur) return;
       this.seq = { kind: act.kind, start: t, dur, monster: act.monster || 'slime', dmg: act.dmg || 0, foe: act.foe || null, party: !!act.party, elite: !!act.elite };
       if (act.kind === 'death') this.dead = true;
@@ -712,8 +712,10 @@
           for (let n = 0; n < 5; n++) { c.fillStyle = n % 2 ? '#ffb43a' : '#ff6a2a'; const hh = 2 + Math.floor(Math.abs(Math.sin(t / 90 + n)) * 4); c.fillRect(78 + n, AG - hh, 1, hh); }
           c.fillStyle = '#5a3a20'; c.fillRect(76, AG - 1, 9, 2);
           if (Math.floor(t / 600) % 2) { c.fillStyle = '#cfe0ff'; c.fillRect(ax + 18, AG - 40, 2, 1); c.fillRect(ax + 21, AG - 44, 3, 1); }
-        } else if (k === 'level' || k === 'chosen' || k === 'sponsor' || k === 'saved') {
-          const col = k === 'level' ? '#ffe08a' : k === 'saved' ? '#9cf0ff' : this.glow;
+        } else if (k === 'level' || k === 'chosen' || k === 'sponsor' || k === 'saved' || k === 'gift') {
+          const col = k === 'level' || k === 'gift' ? '#ffe08a' : k === 'saved' ? '#9cf0ff' : this.glow;
+          // 대후원: 하늘에서 굵은 빛기둥이 내려오고 별이 쏟아진다
+          if (k === 'gift') { c.globalAlpha = 0.25; c.fillStyle = '#fff3c4'; c.fillRect(ax - 8, 0, 40, AG); c.globalAlpha = 1; for (let n = 0; n < 3; n++) this.parts.push({ x: ax - 10 + Math.random() * 44, y: Math.random() * 10, vy: 1.2, life: 40, col: n ? '#ffe08a' : '#ffffff' }); }
           c.globalAlpha = 0.35 + 0.25 * Math.sin(t / 80);
           c.fillStyle = col; c.fillRect(ax + 4, 0, 16, AG); c.fillRect(ax + 8, 0, 8, AG);
           c.globalAlpha = 1;

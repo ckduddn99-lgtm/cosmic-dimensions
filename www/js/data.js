@@ -32,8 +32,8 @@
     // 성좌: per = 후원 레벨당 효과
     constellations: [
       { name: '오리온', title: '사냥꾼의 별', desc: '반물질 생산량 +5% / Lv', per: 0.05 },
-      { name: '리라', title: '거문고의 별', desc: '틱스피드 효율 +2% / Lv', per: 0.02 },
-      { name: '카시오페이아', title: '여왕의 별', desc: '마스터리 경험치 +10% / Lv', per: 0.10 },
+      { name: '리라', title: '거문고의 별', desc: '틱스피드 효율 +1% / Lv', per: 0.01 },
+      { name: '카시오페이아', title: '여왕의 별', desc: '마스터리 경험치 +5% / Lv', per: 0.05 },
       { name: '페가수스', title: '천마의 별', desc: '과충전 지속시간 +20% / Lv', per: 0.20 },
       { name: '백조', title: '고니의 별', desc: '오프라인 생산량 +15% / Lv', per: 0.15 },
       { name: '전갈', title: '전사의 별', desc: '도전 보상 +25% / Lv', per: 0.25 },
