@@ -70,7 +70,7 @@ test('성좌 투자: 사도 발견, 레벨 이월, 필요량 정확 투자', () 
   core.invest(s, 0, B(1, 200), NOW);
   assert.equal(s.constellations[0].level, 10);
   assert.equal(core.invest(s, 0, B(1), NOW).reason, 'max');
-  assert.ok(core.constBonus(s, 0) > 1.4);
+  assert.ok(Math.abs(core.constBonus(s, 0) - 0.5) < 1e-9, 'Lv.10 오리온: 반물질 +50%');
 });
 
 test('사도 스킬 구매', () => {

@@ -31,13 +31,13 @@
 
     // 성좌: per = 후원 레벨당 효과
     constellations: [
-      { name: '오리온', title: '사냥꾼의 별', desc: '모든 차원 생산량 +15% / Lv', per: 0.15 },
-      { name: '리라', title: '거문고의 별', desc: '틱스피드 효율 +8% / Lv', per: 0.08 },
-      { name: '카시오페이아', title: '여왕의 별', desc: '마스터리 경험치 +20% / Lv', per: 0.20 },
+      { name: '오리온', title: '사냥꾼의 별', desc: '반물질 생산량 +5% / Lv', per: 0.05 },
+      { name: '리라', title: '거문고의 별', desc: '틱스피드 효율 +2% / Lv', per: 0.02 },
+      { name: '카시오페이아', title: '여왕의 별', desc: '마스터리 경험치 +10% / Lv', per: 0.10 },
       { name: '페가수스', title: '천마의 별', desc: '과충전 지속시간 +20% / Lv', per: 0.20 },
       { name: '백조', title: '고니의 별', desc: '오프라인 생산량 +15% / Lv', per: 0.15 },
       { name: '전갈', title: '전사의 별', desc: '도전 보상 +25% / Lv', per: 0.25 },
-      { name: '큰곰', title: '북극성의 별', desc: '업적 보너스 +10% / Lv', per: 0.10 },
+      { name: '큰곰', title: '북극성의 별', desc: '업적 보너스 +5% / Lv', per: 0.05 },
       { name: '안드로메다', title: '은하의 별', desc: '성좌 후원 비용 -5% / Lv', per: 0.05 }
     ],
 
@@ -53,7 +53,7 @@
     ],
 
     skills: [
-      { name: '축복', desc: '모든 차원 생산 +5% / Lv' },
+      { name: '축복', desc: '반물질 생산 +5% / Lv' },
       { name: '수호', desc: '오프라인 생산 +10% / Lv' },
       { name: '계시', desc: '주기적으로 반물질을 발견합니다' }
     ],

@@ -131,12 +131,18 @@
   }
 
   function globalMult(s, now) {
-    let k = achBonus(s) * (1 + constBonus(s, 0)) * (1 + challengeBonus(s)) * (1 + blessing(s)) * (1 + 0.2 * rLvl(s, 0));
+    let k = achBonus(s) * (1 + challengeBonus(s)) * (1 + 0.2 * rLvl(s, 0));
     if (hasUpg(s, 3)) k *= 1 + s.infinities;
     if (buffActive(s, now)) k *= buffPower(s);
     if (eventActive(s, 'storm', now)) k *= 3;
-    if (saga() && s.saga) k *= saga().prodMult(s, now);
     return BigNum.pow(boostBase(s), s.boosts).mul(k);
+  }
+  // 성좌·사도에서 오는 배율은 반물질(1차원) 생산에만 곱한다.
+  // 모든 차원에 곱하면 차원끼리 서로를 생산하는 구조 때문에 8제곱으로 불어나 원작 속도가 무너진다.
+  function starMult(s, now) {
+    let k = (1 + constBonus(s, 0)) * (1 + blessing(s));
+    if (saga() && s.saga) k *= saga().prodMult(s, now);
+    return k;
   }
 
   function dimMults(s, now) {
@@ -144,6 +150,7 @@
     return s.dims.map((d, i) => {
       let k = 1 + s.mastery[i].level * 0.1;
       if (i === 0) {
+        k *= starMult(s, now);
         if (hasUpg(s, 2)) k *= 100;
         k *= 1 + 0.5 * rLvl(s, 2);
         if (eventActive(s, 'flood', now)) k *= 4;
@@ -759,7 +766,11 @@
     addMatter(s, gain);
     gainMastery(s, used);
     s.stats.longestOffline = Math.max(s.stats.longestOffline, used);
-    const sagaSummary = saga() && s.saga ? saga().offline(s, used, now === NO_TIMED ? Date.now() : now) : null;
+    const t = now === NO_TIMED ? Date.now() : now;
+    // 앱을 꺼 둔 동안 성좌들이 알아서 공물을 거둬 가고(성력), 그 성력으로 사도를 돌본다
+    const tribute = saga() && s.saga ? saga().tribute(s, gain, t) : null;
+    const sagaSummary = saga() && s.saga ? saga().offline(s, used, t) : null;
+    if (sagaSummary) sagaSummary.tribute = tribute;
     checkChallenge(s);
     checkAchievements(s);
     return { seconds: used, gain, capped: seconds > OFFLINE_CAP, saga: sagaSummary };
@@ -875,7 +886,7 @@
     setRandom(fn) { rng = fn || Math.random; },
     fresh, revive, serialize, record,
     unlocked, hasUpg, inChallenge, totalBought, constLevel, constBonus, achCount, achBonus, challengeBonus,
-    boostBase, tickBase, speed, globalMult, dimMults, production, dimOutput, offlineMult,
+    boostBase, tickBase, speed, globalMult, starMult, dimMults, production, dimOutput, offlineMult,
     dimCost, buyPlan, buyDim, nextCost, buyMaxAll, tickCost, tickLocked, canBuyTick, buyTick, buyTickMax,
     sacMult, sacrificeGain, canSacrifice, sacrifice,
     shiftReq, boostReq, galaxyReq, canShift, canBoost, canGalaxy, canCrunch, shift, boost, galaxy, ipGain, crunch,

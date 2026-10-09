@@ -49,8 +49,14 @@
       { id: 'wolf', name: '성운 늑대', color: '#7d8aa8', lvl: 2 },
       { id: 'skeleton', name: '해골 병사', color: '#e6e0cc', lvl: 3 },
       { id: 'golem', name: '운석 골렘', color: '#8a6a4a', lvl: 5 },
-      { id: 'wraith', name: '공허의 망령', color: '#b06cff', lvl: 6, dark: true }
+      { id: 'wraith', name: '공허의 망령', color: '#b06cff', lvl: 6, dark: true },
+      // 파티만 상대하는 대형 몬스터
+      { id: 'hydra', name: '성간 히드라', color: '#3fae8f', lvl: 8, party: true },
+      { id: 'dragon', name: '공허의 용', color: '#7a3ac0', lvl: 10, dark: true, party: true }
     ],
+
+    // 사도 파티 이름
+    partyNames: ['새벽 원정대', '별무리 동맹', '은빛 순례단', '검은 달 기사단', '성운 개척단', '방랑 성가대', '잿빛 늑대단', '유성 사냥단', '푸른 등불단', '마지막 별의 맹약'],
 
     // 성좌 인격 (채널 메시지 말투)
     voices: [

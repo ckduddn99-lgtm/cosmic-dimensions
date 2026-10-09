@@ -15,7 +15,9 @@
   const MOMENTUM = 80;
   const COOLDOWN = 60;            // 사건 직후 긴장도를 −60으로 내려 같은 사건이 바로 반복되지 않게 한다
   const P_BASE = 0.0001, P_MAX = 0.7, P_MID = 110, P_W = 8, CHECK_EVERY = 4;
-  const MAX_FREE = 10, MAX_FEED = 140, MAX_HALL = 30, MAX_FALLEN = 3;
+  const MAX_FREE = 10, MAX_FEED = 140, MAX_HALL = 30, MAX_FALLEN = 5;
+  const TRIBUTE = 0.1;             // 앱을 꺼 둔 동안 성좌들이 거둬 가는 몫 (오프라인 획득량 대비)
+  const PARTY_MAX = 4;
   const rnd = () => core().random();
   const pick = arr => arr[Math.floor(rnd() * arr.length)];
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -47,7 +49,8 @@
       feed: [], hall: [],
       acc: 0, omenAt: now + 20000,
       buff: { mult: 1, endsAt: 0 },
-      stats: { deaths: 0, betrayals: 0, falls: 0, fates: 0, omens: 0, taken: new BigNum(0), seen: {} }
+      parties: [], nextParty: 1,
+      stats: { deaths: 0, betrayals: 0, falls: 0, fates: 0, omens: 0, redeemed: 0, parties: 0, taken: new BigNum(0), tribute: new BigNum(0), seen: {} }
     };
   }
 
@@ -70,6 +73,42 @@
   const traitOf = p => SD.traits[p.trait];
   function label(p) { return traitOf(p).name + ' ' + clsOf(p).name + ' ' + p.name; }
 
+  /* ───────────── 타락의 원인 ───────────── */
+
+  // 타락도는 어디서 왔는지 함께 기록한다. 타락하는 순간 가장 크게 쌓인 원인이 그 사람의 이야기가 된다.
+  const CAUSE = {
+    neglect: { text: '성좌의 후원이 끊긴 사이, 버림받았다고 믿었습니다.', short: '후원이 끊겨', grudge: 3 },
+    dark: { text: '어둠의 땅에서 너무 오래 싸웠습니다.', short: '어둠에 오래 머물러', grudge: 2 },
+    fear: { text: '죽음의 문턱을 몇 번이나 넘으며 마음이 꺾였습니다.', short: '죽음의 공포로', grudge: 2 },
+    whisper: { text: '타락한 자의 속삭임에 넘어갔습니다.', short: '속삭임에 넘어가', grudge: 1 },
+    fate: { text: '운명의 소용돌이가 마음을 검게 물들였습니다.', short: '운명에 휩쓸려', grudge: 1 },
+    trial: { text: '시련에서 무너진 뒤 다시 일어서지 못했습니다.', short: '시련에 무너져', grudge: 2 },
+    recruit: { text: '타락한 자를 따라 어둠으로 걸어 들어갔습니다.', short: '추종자가 되어', grudge: 1 }
+  };
+  function corruptBy(p, amount, src, by) {
+    p.corrupt += amount;
+    if (amount <= 0) return;
+    p.cs = p.cs || {};
+    p.cs[src] = (p.cs[src] || 0) + amount;
+    if (by) p.csBy = by;
+  }
+  function mainCause(p) {
+    let best = 'dark', v = -1;
+    for (const k in p.cs || {}) if (CAUSE[k] && p.cs[k] > v) { v = p.cs[k]; best = k; }
+    return best;
+  }
+
+  /** 사도가 자기 성좌를 어떻게 여기는지 (카드에 한 줄로 보여 준다) */
+  function faith(s, p, now = Date.now()) {
+    if (p.status !== 'apostle') return '';
+    const c = '\'' + cname(p.patron) + '\'';
+    if (p.corrupt >= 70) return '어둠의 목소리가 ' + c + '보다 크게 들립니다';
+    if (now - p.sponsorAt > TICK * 1000 * 8) return '성좌 ' + c + '이(가) 자신을 잊었다고 생각합니다';
+    if (p.loyal >= 85) return '성좌 ' + c + '을(를) 온전히 믿습니다';
+    if (p.loyal >= 50) return '성좌 ' + c + '을(를) 따릅니다';
+    return '성좌 ' + c + '을(를) 의심하고 있습니다';
+  }
+
   /* ───────────── 인물 ───────────── */
 
   function spawn(s, now, opts = {}) {
@@ -85,7 +124,7 @@
       maxHp: Math.round(c.hp * g * (0.9 + rnd() * 0.2)), atk: Math.round(c.atk * g * (0.9 + rnd() * 0.2)),
       def: Math.round(c.def * g * (0.9 + rnd() * 0.2)), luck: Math.round(c.luck * (0.8 + rnd() * 0.4)),
       corrupt: Math.floor(rnd() * 10), loyal: 50, status: 'free', patron: -1, title: opts.title || '', deeds: 0,
-      sponsorAt: 0, born: now, act: { kind: 'idle', t: now }, look: Math.floor(rnd() * 1e6)
+      sponsorAt: 0, born: now, act: { kind: 'idle', t: now }, look: Math.floor(rnd() * 1e6), cs: {}, party: 0
     };
     p.hp = p.maxHp;
     s.saga.people.push(p);
@@ -113,7 +152,7 @@
     if (!cands.length) return;
     let best = cands[0], score = -1;
     for (const p of cands) { const a = affinity(p, i); if (a > score) { score = a; best = p; } }
-    best.status = 'apostle'; best.patron = i; best.loyal = 55 + Math.floor(rnd() * 25);
+    best.status = 'apostle'; best.patron = i; best.party = 0; best.loyal = 55 + Math.floor(rnd() * 25);
     s.saga.patrons[i] = best.id;
     best.act = { kind: 'chosen', t: now };
     feed(s, 'pick', '성좌 \'' + cname(i) + '\'이(가) ' + best.origin + '의 ' + label(best) + '을(를) 사도로 선택했습니다.', i, now, { a: best.id });
@@ -188,14 +227,14 @@
 
   function battle(s, p, now) {
     const region = regionFor(p), reg = SD.regions[region];
-    const pool = SD.monsters.filter(m => m.lvl <= p.lvl / 2 + 1 && (!m.dark || reg.dark || rnd() < 0.15));
+    const pool = SD.monsters.filter(m => !m.party && m.lvl <= p.lvl / 2 + 1 && (!m.dark || reg.dark || rnd() < 0.15));
     const m = pick(pool.length ? pool : SD.monsters.slice(0, 2));
     const mLvl = Math.max(1, p.lvl + Math.floor(rnd() * 6) - 2);
     const mPow = (10 + mLvl * 7) * (1 + m.lvl * 0.12) * (reg.dark ? 1.25 : 1);
     const win = rnd() < clamp(power(p) / (power(p) + mPow) + 0.18, 0.12, 0.95);
     const dmg = Math.round(p.maxHp * (win ? 0.04 + rnd() * 0.16 : 0.25 + rnd() * 0.3));
     p.hp -= dmg;
-    if (m.dark || reg.dark) p.corrupt += (2 + rnd() * 3) * traitOf(p).corrupt;
+    if (m.dark || reg.dark) corruptBy(p, (2 + rnd() * 3) * traitOf(p).corrupt, 'dark');
     if (win) {
       p.xp += 8 + mLvl * 5; p.deeds++;
       p.act = { kind: 'win', t: now, monster: m.id, region, dmg };
@@ -219,7 +258,7 @@
     }
     if (rnd() < 0.35) { die(s, p, now, cause); return; }
     p.hp = 1;
-    p.corrupt += 10 * traitOf(p).corrupt;
+    corruptBy(p, 10 * traitOf(p).corrupt, 'fear');
     feed(s, 'battle', p.name + '이(가) 죽음의 문턱에서 간신히 살아 돌아왔습니다. 눈빛이 변했습니다.', i, now, { a: p.id });
   }
 
@@ -237,11 +276,14 @@
     const i = p.patron;
     s.saga.stats.falls++;
     addFame(s, i, -10);
+    const cause = mainCause(p);
     p.status = 'fallen'; p.act = { kind: 'fall', t: now }; p.title = '타락한 ' + clsOf(p).name;
+    p.cause = cause; p.grudge = CAUSE[cause].grudge; p.party = 0;
     if (i >= 0 && s.saga.patrons[i] === p.id) s.saga.patrons[i] = 0;
-    feed(s, 'fall', '사도 ' + p.name + '이(가) 심연에 삼켜져 타락했습니다! 성좌 \'' + (i >= 0 ? cname(i) : '???') + '\'의 이름을 저주하며 떠납니다.', i, now, { a: p.id, big: true });
+    const why = cause === 'whisper' && p.csBy ? '타락한 ' + p.csBy + '의 속삭임에 넘어갔습니다.' : CAUSE[cause].text;
+    feed(s, 'fall', '사도 ' + p.name + '이(가) 심연에 삼켜져 타락했습니다! ' + why + ' 성좌 \'' + (i >= 0 ? cname(i) : '???') + '\'의 이름을 저주하며 떠납니다.', i, now, { a: p.id, big: true });
     s.saga.tension.rebellion += 20;
-    s.saga.hall.push({ name: p.name, cls: p.cls, trait: p.trait, lvl: p.lvl, title: p.title, patron: i, fate: 'fallen', t: now, look: p.look });
+    s.saga.hall.push({ name: p.name, cls: p.cls, trait: p.trait, lvl: p.lvl, title: p.title, patron: i, fate: 'fallen', cause, t: now, look: p.look });
     if (s.saga.hall.length > MAX_HALL) s.saga.hall.shift();
     const fs = fallen(s);
     if (fs.length > MAX_FALLEN) toHall(s, fs[0], 'vanished', now);
@@ -265,19 +307,228 @@
     }
   }
 
-  function act(s, p, now) {
+  function adventure(s, p, now) {
     if (p.hp < p.maxHp * 0.5) {
       p.hp = Math.min(p.maxHp, p.hp + Math.round(p.maxHp * 0.45));
       p.act = { kind: 'rest', t: now, region: regionFor(p) };
     } else battle(s, p, now);
+  }
+  function act(s, p, now) {
+    adventure(s, p, now);
+    life(s, p, now);
+  }
+  /** 성좌와의 관계: 후원, 충성, 방치, 타락, 배신 */
+  function life(s, p, now) {
     if (p.status !== 'apostle') return;
     const neglected = now - p.sponsorAt > TICK * 1000 * 8;
-    if (neglected) { p.loyal -= 0.6 / traitOf(p).loyal; p.corrupt += 0.3 * traitOf(p).corrupt; }
+    if (neglected) { p.loyal -= 0.6 / traitOf(p).loyal; corruptBy(p, 0.3 * traitOf(p).corrupt, 'neglect'); }
     else p.corrupt = Math.max(0, p.corrupt - 0.3);
     if (now - p.sponsorAt > TICK * 1000 * 4 && rnd() < 0.5) sponsor(s, p, now);
     p.loyal = clamp(p.loyal, 0, 100);
     if (p.corrupt >= 100) { fall(s, p, now); return; }
     if (p.loyal < 25 && rnd() < 0.04 * traitOf(p).betray) betray(s, p, now);
+  }
+
+  /* ───────────── 타락한 자: 옛 주인에게 원한을 품고 움직인다 ───────────── */
+
+  const GRUDGE_MAX = 3;
+  function fallenAct(s, p, now) {
+    const g = s.saga, i = p.patron, grudge = p.grudge || 1;
+    if (rnd() > 0.04 + 0.015 * grudge) return null;
+    const aps = livingApostles(s), canSteal = i >= 0 && awake(s, i) && !g.power[i].isZero();
+    const canRecruit = fallen(s).length < MAX_FALLEN && free(s).length > 0 && p.cause !== 'recruit';
+    const w = { steal: canSteal ? 0.3 + 0.15 * grudge : 0, whisper: aps.length ? 0.4 : 0, recruit: canRecruit ? 0.15 : 0 };
+    let r = rnd() * (w.steal + w.whisper + w.recruit), kind = null;
+    for (const k in w) { r -= w[k]; if (r < 0 && w[k] > 0) { kind = k; break; } }
+    if (!kind) return null;
+    g.tension.rebellion += 1;
+    if (kind === 'steal') {
+      const amt = g.power[i].mul(0.05 * grudge);
+      g.power[i] = g.power[i].sub(amt);
+      addFame(s, i, -1);
+      feed(s, 'shadow', '타락한 ' + p.name + '이(가) 옛 주인 \'' + cname(i) + '\'의 성소에 숨어들어 성력을 ' + core().fmtShort(amt) + '만큼 훔쳤습니다.', i, now, { a: p.id });
+    } else if (kind === 'whisper') {
+      const t = aps.slice().sort((a, b) => a.loyal - b.loyal).slice(0, 2);
+      const v = pick(t), amt = (6 + 2 * grudge) * traitOf(v).corrupt;
+      corruptBy(v, amt, 'whisper', p.name);
+      v.loyal = clamp(v.loyal - 3, 0, 100);
+      feed(s, 'shadow', '타락한 ' + p.name + '이(가) 사도 ' + v.name + '의 꿈속에서 속삭입니다. (타락 ' + Math.floor(Math.min(100, v.corrupt)) + ')', v.patron, now, { a: v.id });
+      if (v.corrupt >= 100) fall(s, v, now);
+    } else {
+      const q = free(s).slice().sort((a, b) => b.corrupt - a.corrupt)[0];
+      q.status = 'fallen'; q.patron = i; q.cause = 'recruit'; q.grudge = 1; q.corrupt = 100; q.title = p.name + '의 추종자';
+      corruptBy(q, 0, 'recruit');
+      g.tension.rebellion += 4;
+      feed(s, 'shadow', q.origin + '의 ' + q.name + '이(가) 타락한 ' + p.name + '을(를) 따라 어둠으로 걸어 들어갔습니다.', i, now, { a: q.id });
+    }
+    return kind;
+  }
+
+  /** 성좌는 잃은 사도를 쫓는다: 사도(파티째로)를 보내 구원하거나 없앤다 */
+  function hunt(s, now) {
+    const fs = fallen(s);
+    if (!fs.length) return null;
+    for (const f of fs.slice().sort(() => rnd() - 0.5)) {
+      const own = f.patron >= 0 ? apostleOf(s, f.patron) : null;
+      const hunter = own && rnd() < 0.035 ? own : rnd() < 0.012 ? pick(livingApostles(s).filter(p => p.hp > p.maxHp * 0.5)) : null;
+      if (!hunter) continue;
+      return clash(s, hunter, f, now);
+    }
+    return null;
+  }
+  function clash(s, hunter, f, now) {
+    const team = partyMembers(s, hunter);
+    const isOwn = hunter.patron === f.patron;
+    const T = team.reduce((a, p) => a + power(p), 0) * (1 + 0.08 * (team.length - 1));
+    const F = power(f) * (1 + 0.15 * (f.grudge || 1)) * 1.6;
+    const win = rnd() < clamp(T / (T + F) + 0.1, 0.1, 0.92);
+    const who = team.length > 1 ? '파티 \'' + partyOf(s, hunter).name + '\'' : '사도 ' + hunter.name;
+    const foe = { look: f.look, cls: f.cls, corrupt: 100, status: 'fallen' };
+    team.forEach(p => {
+      p.act = { kind: win ? 'win' : 'lose', t: now, region: 4, foe, dmg: Math.round(p.maxHp * (win ? 0.15 : 0.4)) };
+      p.hp -= Math.round(p.maxHp * (win ? 0.1 + rnd() * 0.15 : 0.3 + rnd() * 0.2));
+    });
+    const extra = { a: f.id, cs: team.map(p => p.patron) };
+    let out;
+    if (win) {
+      team.forEach(p => { p.xp += xpNeed(p.lvl) * 0.8; p.deeds += 2; levelUp(s, p, now); });
+      addFame(s, hunter.patron, isOwn ? 8 : 5);
+      const redeem = rnd() < (f.cause === 'recruit' ? 0.6 : isOwn ? 0.55 : 0.25) + (f.cause === 'neglect' && isOwn ? 0.1 : 0);
+      if (redeem) {
+        const from = f.patron;
+        f.status = 'free'; f.patron = -1; f.corrupt = 15; f.loyal = 45; f.title = '구원받은 자'; f.grudge = 0; f.cause = ''; f.cs = {}; f.hp = f.maxHp;
+        s.saga.stats.redeemed++;
+        feed(s, 'redeem', isOwn
+          ? '성좌 \'' + cname(hunter.patron) + '\'이(가) ' + who + '을(를) 보내 잃었던 ' + f.name + '을(를) 되찾았습니다. ' + f.name + '은(는) 다시 세계로 돌아갑니다.'
+          : who + '이(가) 타락한 ' + f.name + '을(를) 꺾고 구원했습니다. ' + (from >= 0 ? '성좌 \'' + cname(from) + '\'의 옛 사도였습니다.' : ''), hunter.patron, now, Object.assign(extra, { big: true }));
+        feed(s, 'voice', SD.voices[hunter.patron].like, hunter.patron, now);
+        out = 'redeem';
+      } else {
+        feed(s, 'hunt', who + '이(가) 타락한 ' + f.name + '을(를) 쓰러뜨렸습니다. 검은 별빛이 흩어져 사라집니다.', hunter.patron, now, Object.assign(extra, { big: true }));
+        toHall(s, f, 'destroyed', now);
+        out = 'destroy';
+      }
+    } else {
+      f.grudge = Math.min(GRUDGE_MAX, (f.grudge || 1) + 1); f.lvl += 1; f.atk += 2;
+      team.forEach(p => corruptBy(p, 5 * traitOf(p).corrupt, 'fear'));
+      feed(s, 'hunt', who + '이(가) 타락한 ' + f.name + '을(를) 쫓았지만 놓쳤습니다. ' + f.name + '의 원한이 깊어집니다.', hunter.patron, now, extra);
+      out = 'escape';
+    }
+    team.forEach(p => { if (p.status === 'apostle' && p.hp <= 0) nearDeath(s, p, now, f.name); if (p.status === 'apostle' && p.corrupt >= 100) fall(s, p, now); });
+    return out;
+  }
+
+  /* ───────────── 파티: 사도들끼리 뭉쳐 더 강한 몬스터를 상대한다 ───────────── */
+
+  const RIVALS = [[0, 5], [2, 7], [5, 4]];
+  const rivals = (a, b) => RIVALS.some(([x, y]) => (a === x && b === y) || (a === y && b === x));
+  const partyOf = (s, p) => (p && p.party ? s.saga.parties.find(q => q.id === p.party) || null : null);
+  function partyMembers(s, p) {
+    const q = partyOf(s, p);
+    return q ? q.members.map(id => person(s, id)).filter(m => m && m.status === 'apostle') : [p];
+  }
+  function compat(a, b) {
+    return 1 + (traitOf(a).likes.includes(b.patron) ? 0.4 : 0) + (traitOf(b).likes.includes(a.patron) ? 0.4 : 0) + (a.cls !== b.cls ? 0.3 : 0) - (rivals(a.patron, b.patron) ? 1 : 0) - (a.corrupt + b.corrupt) / 200 + rnd() * 0.4;
+  }
+  function names(list) { return list.map(p => p.name).join(', '); }
+  function cleanParties(s, now) {
+    const g = s.saga;
+    g.parties = g.parties.filter(q => {
+      q.members = q.members.filter(id => { const m = person(s, id); const ok = m && m.status === 'apostle' && m.party === q.id; if (m && !ok && m.party === q.id) m.party = 0; return ok; });
+      const corrupt = q.members.map(id => person(s, id)).find(m => m.corrupt >= 60);
+      if (corrupt && q.members.length > 2 && rnd() < 0.03) {
+        q.members = q.members.filter(id => id !== corrupt.id); corrupt.party = 0;
+        feed(s, 'party', corrupt.name + '의 눈빛이 변하자 파티 \'' + q.name + '\'의 동료들이 그를 내보냈습니다.', corrupt.patron, now, { a: corrupt.id });
+      }
+      const split = q.members.length >= 2 && rnd() < 0.0015;
+      if (q.members.length >= 2 && !split) return true;
+      q.members.forEach(id => { const m = person(s, id); if (m) m.party = 0; });
+      feed(s, 'party', '파티 \'' + q.name + '\'이(가) ' + (split ? '서로 갈 길을 정하고 ' : '') + '해산했습니다. (승리 ' + q.wins + '회)', -1, now);
+      return false;
+    });
+  }
+  function formParty(s, now) {
+    const g = s.saga;
+    const loose = livingApostles(s).filter(p => !p.party && p.hp > p.maxHp * 0.5);
+    // 자리가 빈 파티에 합류
+    if (loose.length && rnd() < 0.03) {
+      const q = g.parties.filter(x => x.members.length < PARTY_MAX)[0];
+      if (q) {
+        const lead = person(s, q.leader) || person(s, q.members[0]);
+        const p = loose.slice().sort((a, b) => compat(b, lead) - compat(a, lead))[0];
+        if (compat(p, lead) > 0.8) {
+          q.members.push(p.id); p.party = q.id;
+          feed(s, 'party', '사도 ' + p.name + '이(가) 파티 \'' + q.name + '\'에 합류했습니다.', p.patron, now, { a: p.id, cs: partyMembers(s, p).map(m => m.patron) });
+          return q;
+        }
+      }
+    }
+    if (loose.length < 2 || rnd() > 0.06) return null;
+    const lead = pick(loose);
+    const want = 2 + Math.floor(rnd() * 3);
+    const mates = loose.filter(p => p !== lead).map(p => [p, compat(lead, p)]).filter(([, c]) => c > 0.8).sort((a, b) => b[1] - a[1]).slice(0, want - 1).map(([p]) => p);
+    if (!mates.length) return null;
+    const used = new Set(g.parties.map(q => q.name));
+    const name = SD.partyNames.find(n => !used.has(n) && rnd() < 0.5) || SD.partyNames.find(n => !used.has(n)) || lead.name + '의 원정대';
+    const q = { id: g.nextParty++, name, leader: lead.id, members: [lead.id, ...mates.map(p => p.id)], formed: now, wins: 0 };
+    g.parties.push(q);
+    g.stats.parties++;
+    const all = [lead, ...mates];
+    all.forEach(p => { p.party = q.id; });
+    feed(s, 'party', '사도 ' + names(all) + '이(가) 파티 \'' + name + '\'을(를) 결성했습니다.', lead.patron, now, { a: lead.id, cs: all.map(p => p.patron) });
+    return q;
+  }
+  /** 파티 전투: 인원과 평균 레벨에 맞춰 더 강한 몬스터를 부른다. 승률은 혼자 싸울 때와 비슷하게, 보상은 크게. */
+  function partyBattle(s, q, now) {
+    const ms = q.members.map(id => person(s, id)).filter(m => m && m.status === 'apostle');
+    const n = ms.length;
+    if (n < 2) return null;
+    if (ms.reduce((a, p) => a + p.hp / p.maxHp, 0) / n < 0.5) {
+      const region = ms[0].act && ms[0].act.region !== undefined ? ms[0].act.region : 0;
+      ms.forEach(p => { p.hp = Math.min(p.maxHp, p.hp + Math.round(p.maxHp * 0.45)); p.act = { kind: 'rest', t: now, region, party: q.id }; });
+      return 'rest';
+    }
+    const avgLvl = ms.reduce((a, p) => a + p.lvl, 0) / n;
+    const region = regionFor({ lvl: avgLvl + 3 * n, corrupt: Math.max(...ms.map(p => p.corrupt)) }), reg = SD.regions[region];
+    const pool = SD.monsters.filter(m => m.lvl <= avgLvl / 2 + 1 + n && (!m.dark || reg.dark || rnd() < 0.2)).sort((a, b) => b.lvl - a.lvl).slice(0, 3);
+    const m = pick(pool.length ? pool : SD.monsters.slice(0, 3));
+    const elite = rnd() < 0.12;
+    const mLvl = Math.max(1, Math.round(avgLvl + 1 + 1.5 * n + rnd() * 5));
+    const mPow = (10 + mLvl * 7) * (1 + m.lvl * 0.12) * (reg.dark ? 1.25 : 1) * n * 0.75 * (elite ? 1.6 : 1);
+    const P = ms.reduce((a, p) => a + power(p), 0) * (1 + 0.08 * (n - 1));
+    const win = rnd() < clamp(P / (P + mPow) + 0.18, 0.12, 0.95);
+    ms.forEach(p => {
+      const dmg = Math.round(p.maxHp * (win ? 0.03 + rnd() * 0.12 : 0.2 + rnd() * 0.22));
+      p.hp -= dmg;
+      if (m.dark || reg.dark) corruptBy(p, (1.5 + rnd() * 2) * traitOf(p).corrupt, 'dark');
+      p.act = { kind: win ? 'win' : 'lose', t: now, monster: m.id, region, dmg, party: q.id, elite };
+      if (win) { p.xp += (8 + mLvl * 5) * (elite ? 2 : 1); p.deeds++; }
+    });
+    const tag = '파티 \'' + q.name + '\'(' + n + '인)';
+    const extra = { a: q.leader, cs: ms.map(p => p.patron), big: elite && win };
+    const c = (person(s, q.leader) || ms[0]).patron;
+    if (win) {
+      q.wins++;
+      if (elite || rnd() < 0.1) feed(s, 'party', tag + '이(가) ' + reg.name + '에서 ' + (elite ? '정예 ' : '') + 'Lv.' + mLvl + ' ' + m.name + '을(를) 쓰러뜨렸습니다.', c, now, extra);
+    } else if (rnd() < 0.2) feed(s, 'party', tag + '이(가) ' + reg.name + '에서 Lv.' + mLvl + ' ' + m.name + '에게 밀려 물러났습니다.', c, now, extra);
+    ms.forEach(p => { if (p.hp <= 0) nearDeath(s, p, now, m.name); else levelUp(s, p, now); });
+    return win ? 'win' : 'lose';
+  }
+
+  /* ───────────── 공물: 앱을 꺼 둔 동안 성좌들이 알아서 거둬 간다 ───────────── */
+
+  function tribute(s, gain, now) {
+    const list = [0, 1, 2, 3, 4, 5, 6, 7].filter(i => awake(s, i));
+    if (!list.length || !gain || gain.isZero()) return null;
+    const total = BigNum.min(s.matter, gain.mul(TRIBUTE));
+    if (total.isZero()) return null;
+    const inf = influence(s);
+    s.matter = s.matter.sub(total);
+    s.saga.stats.tribute = s.saga.stats.tribute.add(total);
+    const parts = list.map(i => ({ i, amount: total.mul(inf[i]) })).sort((a, b) => inf[b.i] - inf[a.i]);
+    parts.forEach(x => offer(s, x.i, x.amount, now));
+    feed(s, 'tribute', '자리를 비운 사이 성좌들이 공물을 거둬 갔습니다: ' + parts.map(x => cname(x.i) + ' ' + core().fmtShort(x.amount)).join(' · '), -1, now, { cs: list });
+    return { total, frac: TRIBUTE, parts };
   }
 
   /* ───────────── 전조와 운명 사건 ───────────── */
@@ -370,7 +621,7 @@
     }
     if (text.includes('{F}')) text = fillName(text, 'F', pick(fallen(s)).name, '타락한 ');
     if (target && o.fx) {
-      if (o.fx.corrupt) target.corrupt += o.fx.corrupt * traitOf(target).corrupt;
+      if (o.fx.corrupt) corruptBy(target, o.fx.corrupt * traitOf(target).corrupt, 'fate');
       if (o.fx.loyalty) target.loyal = clamp(target.loyal + o.fx.loyalty, 0, 100);
       if (o.fx.xp) { target.xp += o.fx.xp; levelUp(s, target, now); }
       if (o.fx.hp) target.hp = Math.max(1, target.hp + Math.round(target.maxHp * o.fx.hp / 100));
@@ -438,7 +689,7 @@
     w.act = { kind: 'win', t: now, rival: l.id };
     feed(s, 'fate-fx', w.name + '이(가) ' + l.name + '을(를) 꺾었습니다.', w.patron, now, { a: w.id, fate: f.id });
     if (rnd() < deathChance) { if (l.status === 'fallen') { feed(s, 'fate-fx', '타락한 ' + l.name + '이(가) 소멸했습니다.', -1, now, { fate: f.id }); toHall(s, l, 'destroyed', now); return w; } die(s, l, now, w.name); }
-    else { l.hp = Math.max(1, Math.round(l.maxHp * 0.1)); l.corrupt += 8 * traitOf(l).corrupt; l.act = { kind: 'lose', t: now }; }
+    else { l.hp = Math.max(1, Math.round(l.maxHp * 0.1)); corruptBy(l, 8 * traitOf(l).corrupt, 'fear'); l.act = { kind: 'lose', t: now }; }
     return w;
   }
 
@@ -496,13 +747,13 @@
           feed(s, 'fate-fx', p.name + '이(가) 시련을 통과하고 \'' + p.title + '\'의 칭호를 얻었습니다!', p.patron, now, { a: p.id, fate: f.id, big: true });
           out.lines.push(p.name + ' 시련 통과');
         } else if (rnd() < 0.65) { die(s, p, now, '시련'); out.lines.push(p.name + ' 시련 중 사망'); }
-        else { p.corrupt += 30 * traitOf(p).corrupt; p.hp = 1; feed(s, 'fate-fx', p.name + '이(가) 시련에서 무너졌습니다. 마음 한구석이 검게 물들었습니다.', p.patron, now, { a: p.id, fate: f.id }); out.lines.push(p.name + ' 시련 실패'); if (p.corrupt >= 100) fall(s, p, now); }
+        else { corruptBy(p, 30 * traitOf(p).corrupt, 'trial'); p.hp = 1; feed(s, 'fate-fx', p.name + '이(가) 시련에서 무너졌습니다. 마음 한구석이 검게 물들었습니다.', p.patron, now, { a: p.id, fate: f.id }); out.lines.push(p.name + ' 시련 실패'); if (p.corrupt >= 100) fall(s, p, now); }
         break;
       }
       case 'corrupt': {
         const list = e.one ? [pick(aps.length ? aps : livingApostles(s))].filter(Boolean) : aps;
         list.forEach(p => {
-          p.corrupt += e.amount * traitOf(p).corrupt;
+          corruptBy(p, e.amount * traitOf(p).corrupt, 'fate');
           feed(s, 'fate-fx', p.name + '의 영혼이 어둠에 물들었습니다 (타락도 ' + Math.floor(Math.min(100, p.corrupt)) + ').', p.patron, now, { a: p.id, fate: f.id });
           if (p.corrupt >= 100) fall(s, p, now);
         });
@@ -565,8 +816,12 @@
   function step(s, now) {
     ensureWorld(s, now);
     for (let i = 0; i < 8; i++) if (awake(s, i) && !apostleOf(s, i) && rnd() < 0.35) choose(s, i, now);
-    for (const p of livingApostles(s)) act(s, p, now);
-    for (const p of fallen(s)) { p.xp += 10; levelUp(s, p, now); }
+    cleanParties(s, now);
+    formParty(s, now);
+    for (const q of s.saga.parties.slice()) partyBattle(s, q, now);
+    for (const p of livingApostles(s)) { if (!p.party) adventure(s, p, now); life(s, p, now); }
+    for (const p of fallen(s)) { p.xp += 10; levelUp(s, p, now); fallenAct(s, p, now); }
+    hunt(s, now);
     for (const id in s.saga.tension) s.saga.tension[id] *= 0.995;
     for (let i = 0; i < 8; i++) s.saga.fame[i] *= 0.999;
     s.saga.ticks = (s.saga.ticks || 0) + 1;
@@ -586,7 +841,8 @@
   function offline(s, seconds, now) {
     if (!s.constellations.some(c => c.apostleFound)) return null;
     const steps = Math.min(Math.floor(seconds / TICK), 480);
-    const before = { deaths: s.saga.stats.deaths, betrayals: s.saga.stats.betrayals, falls: s.saga.stats.falls, fates: s.saga.stats.fates, feed: s.saga.feed.length };
+    const st = s.saga.stats;
+    const before = { deaths: st.deaths, betrayals: st.betrayals, falls: st.falls, fates: st.fates, redeemed: st.redeemed, parties: st.parties, feed: s.saga.feed.length };
     const startFeed = s.saga.feed[s.saga.feed.length - 1];
     const start = now - steps * TICK * 1000;
     for (let k = 0; k < steps; k++) {
@@ -599,12 +855,14 @@
     const fresh = s.saga.feed.slice(idx + 1).filter(f => f.big);
     return {
       steps, deaths: s.saga.stats.deaths - before.deaths, betrayals: s.saga.stats.betrayals - before.betrayals,
-      falls: s.saga.stats.falls - before.falls, fates: s.saga.stats.fates - before.fates, highlights: fresh.slice(-6).map(f => f.text)
+      falls: st.falls - before.falls, fates: st.fates - before.fates, redeemed: st.redeemed - before.redeemed, parties: st.parties - before.parties,
+      highlights: fresh.slice(-6).map(f => f.text)
     };
   }
 
   function prodMult(s, now) {
-    let k = 1 + livingApostles(s).reduce((a, p) => a + p.lvl * 0.02, 0);
+    // 사도 레벨 합 1당 +0.5%, 최대 ×2 (파티로 레벨이 빨리 올라도 게임 속도가 무너지지 않게)
+    let k = 1 + Math.min(1, livingApostles(s).reduce((a, p) => a + p.lvl, 0) * 0.005);
     if (now < s.saga.buff.endsAt) k *= s.saga.buff.mult;
     return k;
   }
@@ -624,8 +882,12 @@
         id: Math.floor(num(p.id, 1, 1e9)), name: str(p.name, 20) || '이름 없는 자', cls: Math.floor(num(p.cls, 0, SD.classes.length - 1)), trait: Math.floor(num(p.trait, 0, SD.traits.length - 1)),
         origin: str(p.origin, 30), lvl: Math.floor(num(p.lvl, 1, 999)), xp: num(p.xp, 0, 1e9), hp: num(p.hp, 0, 1e9), maxHp: num(p.maxHp, 1, 1e9), atk: num(p.atk, 1, 1e9), def: num(p.def, 0, 1e9), luck: num(p.luck, 0, 1e6),
         corrupt: num(p.corrupt, 0, 200), loyal: num(p.loyal, 0, 100), status, patron: Math.floor(num(p.patron, -1, 7)), title: str(p.title, 30), deeds: Math.floor(num(p.deeds, 0, 1e9)),
-        sponsorAt: num(p.sponsorAt, 0, now), born: num(p.born, 0, now), act: { kind: 'idle', t: now }, look: Math.floor(num(p.look, 0, 1e9))
+        sponsorAt: num(p.sponsorAt, 0, now), born: num(p.born, 0, now), act: { kind: 'idle', t: now }, look: Math.floor(num(p.look, 0, 1e9)),
+        cs: {}, party: Math.floor(num(p.party, 0, 1e9))
       };
+      if (p.cs && typeof p.cs === 'object') for (const k in CAUSE) if (p.cs[k]) q.cs[k] = num(p.cs[k], 0, 1e6);
+      if (typeof p.csBy === 'string') q.csBy = p.csBy.slice(0, 20);
+      if (status === 'fallen') { q.cause = CAUSE[p.cause] ? p.cause : 'dark'; q.grudge = Math.floor(num(p.grudge, 1, GRUDGE_MAX)); }
       if (ids.has(q.id)) return null;
       ids.add(q.id);
       return q;
@@ -637,30 +899,45 @@
       return p && p.status === 'apostle' && p.patron === i ? id : 0;
     });
     g.people.forEach(p => { if (p.status === 'apostle' && g.patrons[p.patron] !== p.id) { p.status = 'free'; p.patron = -1; } });
+    // 파티: 살아 있는 사도만, 한 사람은 한 파티에만, 2명 미만이면 해산
+    const seat = new Map();
+    g.parties = (Array.isArray(raw.parties) ? raw.parties : []).slice(0, 10).map(q => {
+      if (!q || typeof q !== 'object') return null;
+      const id = Math.floor(num(q.id, 1, 1e9));
+      const members = (Array.isArray(q.members) ? q.members : []).map(x => Math.floor(num(x, 0, 1e9)))
+        .filter(x => { const m = g.people.find(pp => pp.id === x); return m && m.status === 'apostle' && m.party === id && !seat.has(x); }).slice(0, PARTY_MAX);
+      if (members.length < 2) return null;
+      members.forEach(x => seat.set(x, id));
+      return { id, name: str(q.name, 20) || '이름 없는 원정대', leader: members.includes(q.leader) ? q.leader : members[0], members, formed: num(q.formed, 0, now), wins: Math.floor(num(q.wins, 0, 1e9)) };
+    }).filter(Boolean);
+    g.people.forEach(p => { p.party = seat.get(p.id) || 0; });
+    g.nextParty = Math.max(num(raw.nextParty, 1, 1e9), ...g.parties.map(q => q.id + 1), 1);
     g.fame = g.fame.map((_, i) => num(Array.isArray(raw.fame) ? raw.fame[i] : 0, -50, 500));
     g.power = g.power.map((_, i) => { try { return new BigNum(Array.isArray(raw.power) ? raw.power[i] : 0); } catch (e) { return new BigNum(0); } });
     if (raw.tension && typeof raw.tension === 'object') for (const f of SD.fates) g.tension[f.id] = num(raw.tension[f.id], -COOLDOWN, 1e6);
     g.feed = (Array.isArray(raw.feed) ? raw.feed : []).slice(-MAX_FEED).map(f => f && typeof f.text === 'string' ? {
       t: num(f.t, 0, now), kind: str(f.kind, 12) || 'info', text: f.text.slice(0, 200), c: Math.floor(num(f.c, -1, 7)), big: f.big === true,
-      fate: SD.fates.some(x => x.id === f.fate) ? f.fate : undefined, a: f.a !== undefined ? Math.floor(num(f.a, 0, 1e9)) : undefined
+      fate: SD.fates.some(x => x.id === f.fate) ? f.fate : undefined, a: f.a !== undefined ? Math.floor(num(f.a, 0, 1e9)) : undefined,
+      cs: Array.isArray(f.cs) ? f.cs.slice(0, 8).map(x => Math.floor(num(x, -1, 7))) : undefined
     } : null).filter(Boolean);
     g.hall = (Array.isArray(raw.hall) ? raw.hall : []).slice(-MAX_HALL).map(h => h && typeof h.name === 'string' ? {
       name: h.name.slice(0, 20), cls: Math.floor(num(h.cls, 0, SD.classes.length - 1)), trait: Math.floor(num(h.trait, 0, SD.traits.length - 1)), lvl: Math.floor(num(h.lvl, 1, 999)),
-      title: str(h.title, 30), patron: Math.floor(num(h.patron, -1, 7)), fate: str(h.fate, 12), t: num(h.t, 0, now), look: Math.floor(num(h.look, 0, 1e9))
+      title: str(h.title, 30), patron: Math.floor(num(h.patron, -1, 7)), fate: str(h.fate, 12), cause: CAUSE[h.cause] ? h.cause : undefined, t: num(h.t, 0, now), look: Math.floor(num(h.look, 0, 1e9))
     } : null).filter(Boolean);
     g.acc = num(raw.acc, 0, TICK);
     g.omenAt = Math.max(now + 15000, num(raw.omenAt, 0, now + 120000));
     if (raw.buff && typeof raw.buff === 'object') { g.buff.mult = num(raw.buff.mult, 1, 100); g.buff.endsAt = num(raw.buff.endsAt, 0, now + 3600000); }
     const rs = raw.stats && typeof raw.stats === 'object' ? raw.stats : {};
-    for (const k of ['deaths', 'betrayals', 'falls', 'fates', 'omens']) g.stats[k] = Math.floor(num(rs[k], 0, 1e9));
-    try { g.stats.taken = new BigNum(rs.taken || 0); } catch (e) { g.stats.taken = new BigNum(0); }
+    for (const k of ['deaths', 'betrayals', 'falls', 'fates', 'omens', 'redeemed', 'parties']) g.stats[k] = Math.floor(num(rs[k], 0, 1e9));
+    for (const k of ['taken', 'tribute']) { try { g.stats[k] = new BigNum(rs[k] || 0); } catch (e) { g.stats[k] = new BigNum(0); } }
     if (rs.seen && typeof rs.seen === 'object') for (const f of SD.fates) if (rs.seen[f.id]) g.stats.seen[f.id] = Math.floor(num(rs.seen[f.id], 0, 1e9));
     return g;
   }
 
   CD.saga = {
     TICK, prob, fillName, fixJosa, influence, priceMult, takeFraction, fresh, revive, update, step, offline, prodMult, offer, omen, resolve, checkFates, fateReady, xpNeed, power,
-    apostleOf, livingApostles, fallen, free, label, spawn, choose, ensureWorld
+    apostleOf, livingApostles, fallen, free, label, spawn, choose, ensureWorld,
+    CAUSE, corruptBy, faith, fallenAct, hunt, clash, partyOf, partyMembers, formParty, partyBattle, tribute, fall
   };
   if (typeof module === 'object' && module.exports) module.exports = CD.saga;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

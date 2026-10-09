@@ -277,6 +277,21 @@
       px(3, 7, 1, 3 - k, dk); px(5, 7, 1, 2 + k, dk); px(9, 7, 1, 3 - k, dk); px(11, 7, 1, 2 + k, dk);
     } else if (id === 'skeleton') {
       drawHuman(ctx, x, y, { skin: col, hair: col, cloth: hurt ? '#fff' : '#bdb6a0', cloth2: dk, pants: dk, boots: dk, eye: '#000', gear: 'sword' }, f % 4 < 2 ? 'idle' : 'attack', f, flip, unit);
+    } else if (id === 'hydra') {
+      // 성간 히드라: 세 개의 목이 번갈아 고개를 든다
+      const px = brush(ctx, x, y - 16 * unit, unit, flip, 18), k = f % 2, eye = hurt ? '#fff' : '#ffe14a';
+      px(3, 9, 11, 5, col); px(4, 14, 2, 2, dk); px(11, 14, 2, 2, dk); px(0, 11, 3, 2, dk); px(5, 12, 7, 1, shade(m.color, 1.25));
+      px(5, 4 + k, 2, 6 - k, col); px(3, 2 + k, 4, 3, col); px(3, 3 + k, 1, 1, eye);
+      px(9, 2 + (1 - k), 2, 8 - (1 - k), col); px(9, 0 + (1 - k), 5, 3, col); px(13, 1 + (1 - k), 1, 1, eye); px(13, 2 + (1 - k), 1, 1, '#c03a3a');
+      px(13, 5 + k, 2, 5 - k, col); px(14, 3 + k, 4, 3, col); px(17, 4 + k, 1, 1, eye);
+    } else if (id === 'dragon') {
+      // 공허의 용: 날개를 퍼덕이며 보랏빛 눈을 번뜩인다
+      const px = brush(ctx, x, y - 16 * unit, unit, flip, 20), up = f % 2, eye = hurt ? '#fff' : '#ff4ad8';
+      if (up) { px(6, 0, 3, 2, dk); px(5, 2, 7, 3, dk); px(7, 5, 6, 2, dk); } else { px(4, 5, 9, 2, dk); px(3, 7, 4, 2, dk); }
+      px(5, 7, 10, 5, col); px(0, 9, 5, 2, col); px(0, 8, 1, 1, dk); px(6, 11, 8, 1, shade(m.color, 1.3));
+      px(14, 4, 2, 5, col); px(14, 2, 5, 3, col); px(18, 4, 2, 1, col); px(17, 3, 1, 1, eye); px(15, 1, 1, 1, '#e8e0ff'); px(17, 1, 1, 1, '#e8e0ff');
+      px(7, 12, 2, 4, dk); px(12, 12, 2, 4, dk);
+      if (!hurt && f % 4 === 0) { px(20, 4, 1, 1, '#c070ff'); }
     } else if (id === 'golem') {
       const px = brush(ctx, x, y - 16 * unit, unit, flip, 14), k = f % 2;
       px(3, 2, 8, 7, col); px(1, 5 + k, 3, 6, dk); px(10, 5 - k, 3, 6, dk); px(4, 9, 6, 4, col); px(4, 13, 2, 3, dk); px(8, 13, 2, 3, dk); px(5, 4, 1, 1, '#ffb43a'); px(8, 4, 1, 1, '#ffb43a');
@@ -648,11 +663,12 @@
       this.p = p; this.glow = glow || '#ffd27a';
     }
     setGrave(h) { this.grave = h; }
+    setParty(list) { this.allies = (list || []).slice(0, 3); }
     play(act, t) {
       if (act.region !== undefined) this.region = act.region;
       const dur = { win: 2600, lose: 2600, rest: 3200, level: 1800, sponsor: 1800, saved: 1600, chosen: 2000, death: 99999999, fall: 2400, betray: 2200 }[act.kind];
       if (!dur) return;
-      this.seq = { kind: act.kind, start: t, dur, monster: act.monster || 'slime', dmg: act.dmg || 0 };
+      this.seq = { kind: act.kind, start: t, dur, monster: act.monster || 'slime', dmg: act.dmg || 0, foe: act.foe || null, party: !!act.party, elite: !!act.elite };
       if (act.kind === 'death') this.dead = true;
     }
     render(t) {
@@ -665,7 +681,8 @@
       c.drawImage(this.bgs[this.region], -Math.floor(this.scroll), 0);
       if (!p) { this.drawEmpty(c, t); return; }
       const L = personLook(p), f = Math.floor(t / 150);
-      let pose = walking ? 'walk' : 'idle', ax = 48, flip = false, hurt = false;
+      const allies = this.allies || [];
+      let pose = walking ? 'walk' : 'idle', ax = allies.length ? 40 + allies.length * 12 : 48, flip = false, hurt = false;
       const sq = this.seq, e = sq ? (t - sq.start) / sq.dur : 0;
       if (sq && e >= 1 && sq.kind !== 'death') this.seq = null;
       if (L.aura) { c.globalAlpha = 0.3 + 0.2 * Math.sin(t / 150); c.fillStyle = L.aura; c.fillRect(ax - 4, AG - 40, 32, 40); c.globalAlpha = 1; }
@@ -677,7 +694,16 @@
           const turn = Math.floor((t - sq.start) / 300) % 2;
           if (fighting) { pose = turn ? 'attack' : 'idle'; if (k === 'lose' && !turn) { hurt = true; ax -= 2; } }
           const mDead = k === 'win' && e >= 0.85;
-          if (!mDead || Math.floor(t / 80) % 2) drawMonster(c, sq.monster, mx, AG, f, true, 2, fighting && turn && k === 'win');
+          if (!mDead || Math.floor(t / 80) % 2) {
+            if (sq.foe) {
+              // 타락한 자와의 결투: 보랏빛 오라를 두른 사람
+              c.globalAlpha = 0.3 + 0.2 * Math.sin(t / 120); c.fillStyle = '#9b2bff'; c.fillRect(mx - 4, AG - 40, 32, 40); c.globalAlpha = 1;
+              drawHuman(c, mx, AG, personLook(sq.foe), fighting && !turn ? 'attack' : 'idle', f, true, 2);
+            } else {
+              if (sq.elite) { c.globalAlpha = 0.25 + 0.15 * Math.sin(t / 100); c.fillStyle = '#ff5a3a'; c.fillRect(mx - 2, AG - (sq.party ? 52 : 36), sq.party ? 60 : 36, sq.party ? 52 : 36); c.globalAlpha = 1; }
+              drawMonster(c, sq.monster, mx, AG, f, true, sq.party ? 3 : 2, fighting && turn && k === 'win');
+            }
+          }
           if (fighting && turn && Math.random() < 0.3) this.nums.push({ x: k === 'win' ? mx + 6 : ax + 8, y: AG - 34, v: Math.ceil(5 + Math.random() * 40), col: k === 'win' ? '#ffe08a' : '#ff5a6a', life: 30 });
           if (mDead && Math.random() < 0.5) this.parts.push({ x: mx + 10 + Math.random() * 10, y: AG - 10 - Math.random() * 14, vy: -0.4, life: 25, col: '#fff' });
           if (k === 'lose' && e >= 0.85) pose = 'sit';
@@ -701,6 +727,11 @@
           pose = e > 0.5 ? 'walk' : 'cast'; if (e > 0.5) { flip = true; ax -= (e - 0.5) * 120; }
         } else if (k === 'betray') { pose = 'walk'; flip = true; ax -= e * 90; }
       }
+      // 파티 동료는 뒤에서 같은 동작으로 따라온다
+      allies.forEach((m, k) => {
+        const ap = pose === 'attack' ? (Math.floor(t / 300) + k) % 2 ? 'attack' : 'idle' : pose === 'sit' || pose === 'walk' || pose === 'cast' ? pose : 'idle';
+        drawHuman(c, ax - 16 * (k + 1), AG, personLook(m), ap, f + k, flip, 2);
+      });
       drawHuman(c, ax, AG, hurt ? Object.assign({}, L, { cloth: '#ffffff', skin: '#ffffff' }) : L, pose, f, flip, 2);
       this.drawFx(c);
     }

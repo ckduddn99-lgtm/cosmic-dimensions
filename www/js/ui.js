@@ -817,7 +817,7 @@
   let selConst = 0, sanct = null, adv = null, bubbleUntil = 0, lastStage = 0, skillEls = [], apEls = null, faceFor = -1;
   const pickEls = [], fateEls = {}, tensionSeen = {};
   const hhmm = t => new Date(t).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
-  const FEED_CLS = { fate: 'big', 'fate-fx': 'sys', death: 'bad', fall: 'bad', betray: 'bad', take: 'take', omen: 'omen', 'omen-big': 'omen big', voice: 'omen', pick: 'sys', sponsor: 'sys', save: 'sys', level: 'sys', battle: '' };
+  const FEED_CLS = { party: 'sys', shadow: 'bad', hunt: 'take', redeem: 'big', tribute: 'take', fate: 'big', 'fate-fx': 'sys', death: 'bad', fall: 'bad', betray: 'bad', take: 'take', omen: 'omen', 'omen-big': 'omen big', voice: 'omen', pick: 'sys', sponsor: 'sys', save: 'sys', level: 'sys', battle: '' };
   function feedHTML(list) {
     return list.map(f => '<div class="feed-row ' + (FEED_CLS[f.kind] || '') + (f.big && f.kind !== 'omen-big' ? ' big' : '') + '"><time>' + hhmm(f.t) + '</time><span>' + esc(nums(f.text)) + '</span></div>').join('') || '<div class="empty-ap">아직 아무 일도 일어나지 않았습니다.</div>';
   }
@@ -853,15 +853,16 @@
       return r;
     });
     const ai = $('#apostle-info');
-    ai.innerHTML = '<div class="ap-wrap"><div class="ap-head"><canvas class="pix" width="16" height="20"></canvas><div><div class="ap-name"></div><div class="ap-meta"></div></div></div>' +
+    ai.innerHTML = '<div class="ap-wrap"><div class="ap-head"><canvas class="pix" width="16" height="20"></canvas><div><div class="ap-name"></div><div class="ap-meta"></div><div class="ap-faith"></div></div></div>' +
       '<div class="bar3"><span>체력</span><span class="rail-bar hp"><span class="rail-bar-in"></span></span><b></b></div>' +
       '<div class="bar3"><span>충성</span><span class="rail-bar loy"><span class="rail-bar-in"></span></span><b></b></div>' +
       '<div class="bar3"><span>타락</span><span class="rail-bar cor"><span class="rail-bar-in"></span></span><b></b></div>' +
       '<div class="bar3"><span>경험</span><span class="rail-bar"><span class="rail-bar-in"></span></span><b></b></div>' +
-      '<div class="ap-stats"></div></div><div class="empty-ap hidden"></div>';
+      '<div class="ap-stats"></div><div class="ap-party"></div></div><div class="empty-ap hidden"></div><div class="ap-lost"></div>';
     const bars = Array.from(ai.querySelectorAll('.bar3'));
     apEls = {
       wrap: ai.querySelector('.ap-wrap'), empty: ai.querySelector('.empty-ap'), cv: ai.querySelector('canvas'), name: ai.querySelector('.ap-name'), meta: ai.querySelector('.ap-meta'),
+      faith: ai.querySelector('.ap-faith'), party: ai.querySelector('.ap-party'), lost: ai.querySelector('.ap-lost'),
       bars: bars.map(b => ({ fill: b.querySelector('.rail-bar-in'), val: b.querySelector('b') })), stats: ai.querySelector('.ap-stats'), drawn: null
     };
     const fl = $('#fate-list');
@@ -896,6 +897,7 @@
     sanct.setVisitor(ap && ap.act && Date.now() - ap.act.t < 20000 && ['chosen', 'sponsor', 'level'].includes(ap.act.kind) ? ap : null);
     sanct.render(t);
     adv.setApostle(ap, PX.GLOW[i]);
+    adv.setParty(ap ? SG.partyMembers(S, ap).filter(m => m !== ap) : []);
     if (!ap) { const g = S.saga.hall.filter(h => h.patron === i).pop(); adv.setGrave(g && g.fate === 'dead' ? g : null); }
     adv.render(t);
     const b = $('#sanct-bubble');
@@ -960,7 +962,7 @@
     cls(apEls.wrap, 'hidden', !ap); cls(apEls.empty, 'hidden', !!ap);
     if (!ap) {
       const lost = g.hall.filter(hh => hh.patron === i).pop();
-      setText(apEls.empty, !awake ? '성좌가 잠들어 있습니다. 공물을 바쳐 깨우거나, 운명 사건 중 성좌가 스스로 깨어나기를 기다리세요.' : lost ? '사도 ' + lost.name + '을(를) 잃었습니다. 성좌가 새 사도를 찾고 있습니다…' : '성좌가 세계를 내려다보며 사도를 고르고 있습니다…');
+      setText(apEls.empty, !awake ? '성좌가 잠들어 있습니다. 공물을 바쳐 깨우세요.' : lost ? '사도 ' + lost.name + '을(를) 잃었습니다. 성좌가 새 사도를 찾고 있습니다…' : '성좌가 세계를 내려다보며 사도를 고르고 있습니다…');
       setText($('#adv-sub'), ''); setText($('#adv-region'), lost && lost.fate === 'dead' ? '무덤' : '—');
     } else {
       const cl = SDX.classes[ap.cls], tr = SDX.traits[ap.trait];
@@ -970,12 +972,18 @@
       const vals = [[ap.hp / ap.maxHp, Math.max(0, Math.round(ap.hp)) + '/' + Math.round(ap.maxHp)], [ap.loyal / 100, Math.round(ap.loyal)], [Math.min(1, ap.corrupt / 100), Math.round(Math.min(100, ap.corrupt))], [ap.xp / SG.xpNeed(ap.lvl), Math.floor(ap.xp / SG.xpNeed(ap.lvl) * 100) + '%']];
       apEls.bars.forEach((b, k) => { width(b.fill, vals[k][0] * 100); setText(b.val, vals[k][1]); });
       setHTML(apEls.stats, [['공격', ap.atk], ['방어', ap.def], ['행운', ap.luck], ['공적', ap.deeds]].map(([k, v]) => '<div>' + Math.round(v) + '<small>' + k + '</small></div>').join(''));
-      setText($('#adv-sub'), '생산 +' + Math.round(ap.lvl * 2) + '%');
+      setText(apEls.faith, SG.fixJosa(SG.faith(S, ap, Date.now())));
+      const pt = SG.partyOf(S, ap);
+      setHTML(apEls.party, pt ? '⚔ 파티 <b>' + esc(pt.name) + '</b> · ' + SG.partyMembers(S, ap).map(m => EMBLEMS[m.patron] + ' ' + esc(m.name) + ' Lv.' + m.lvl).join(' · ') + ' <small>(승리 ' + pt.wins + ')</small>' : '<small>혼자 모험 중</small>');
+      setText($('#adv-sub'), '반물질 생산 +' + (ap.lvl * 0.5).toFixed(1) + '%');
       const region = ap.act && ap.act.region !== undefined ? SDX.regions[ap.act.region].name : '여정';
       setText($('#adv-region'), region);
     }
+    // 이 성좌가 잃은 자 (타락해 원한을 품은 옛 사도)
+    const lostOnes = SG.fallen(S).filter(p => p.patron === i);
+    setHTML(apEls.lost, lostOnes.length ? '<div class="lost-title">성좌 \'' + esc(D.constellations[i].name) + '\'이(가) 잃은 자</div>' + lostOnes.map(fallenLine).join('') : '');
     setText($('#feed-label'), D.constellations[i].name);
-    renderFeed($('#sanct-feed'), g.feed.filter(f => f.c === i).slice(-30));
+    renderFeed($('#sanct-feed'), g.feed.filter(f => f.c === i || (f.cs && f.cs.includes(i))).slice(-30));
   }
 
   function fmtP(p) { return p < 0.001 ? (p * 100).toFixed(2) + '%' : p < 0.1 ? (p * 100).toFixed(2) + '%' : (p * 100).toFixed(1) + '%'; }
@@ -1022,6 +1030,21 @@
     const cl = SDX.classes[p.cls], tr = SDX.traits[p.trait];
     return '<div class="person"><canvas class="pix" width="16" height="20" data-look="' + p.look + '" data-cls="' + p.cls + '" data-st="' + (tagCls === 'fallen' ? 'fallen' : 'free') + '"></canvas><div><b>' + esc(p.name) + '</b> <small>Lv.' + p.lvl + ' · ' + tr.name + ' ' + cl.name + (p.origin ? ' · ' + esc(p.origin) : '') + (p.title ? ' · 「' + esc(p.title) + '」' : '') + '</small></div><span class="tag ' + (tagCls || '') + '">' + tag + '</span></div>';
   }
+  const GRUDGE = g => '●'.repeat(g) + '○'.repeat(Math.max(0, 3 - g));
+  function fallenLine(p) {
+    const c = SG.CAUSE[p.cause] || SG.CAUSE.dark;
+    return '<div class="lost-row"><b>' + esc(p.name) + '</b> Lv.' + p.lvl + ' <span class="grudge" title="원한">' + GRUDGE(p.grudge || 1) + '</span> <small>' + esc(c.short) + ' 타락' + (p.cause === 'recruit' && p.title ? ' · ' + esc(p.title) : '') + '</small></div>';
+  }
+  function fallenRow(p) {
+    const c = SG.CAUSE[p.cause] || SG.CAUSE.dark, cl = SDX.classes[p.cls];
+    return '<div class="person"><canvas class="pix" width="16" height="20" data-look="' + p.look + '" data-cls="' + p.cls + '" data-st="fallen"></canvas><div><b>' + esc(p.name) + '</b> <small>Lv.' + p.lvl + ' · ' + cl.name +
+      (p.patron >= 0 ? ' · 옛 주인 ' + EMBLEMS[p.patron] + ' ' + esc(D.constellations[p.patron].name) : '') + ' · ' + esc(c.short) + ' 타락</small></div><span class="tag fallen" title="원한">' + GRUDGE(p.grudge || 1) + '</span></div>';
+  }
+  function partyRow(q) {
+    const ms = q.members.map(id => S.saga.people.find(p => p.id === id)).filter(Boolean);
+    return '<div class="party-row"><div><b>' + esc(q.name) + '</b> <small>' + ms.length + '인 · 승리 ' + q.wins + '</small></div><div class="party-ms">' +
+      ms.map(m => '<span><canvas class="pix" width="16" height="20" data-look="' + m.look + '" data-cls="' + m.cls + '" data-st="free"></canvas>' + EMBLEMS[m.patron] + ' ' + esc(m.name) + ' <small>Lv.' + m.lvl + '</small></span>').join('') + '</div></div>';
+  }
   function paintPeople(el) { el.querySelectorAll('canvas[data-look]').forEach(cv => PX.personPortrait(cv, { look: Number(cv.dataset.look), cls: Number(cv.dataset.cls), corrupt: 0, status: cv.dataset.st })); }
   function updateWorld() {
     const g = S.saga;
@@ -1033,11 +1056,14 @@
       paintPeople(el);
     };
     set($('#free-list'), SG.free(S).slice().sort((a, b) => b.lvl - a.lvl), p => personRow(p, p.title ? '영웅' : '후보', p.title ? 'hero' : ''));
-    set($('#fallen-list'), SG.fallen(S), p => personRow(p, '타락', 'fallen'));
+    set($('#fallen-list'), SG.fallen(S), fallenRow);
+    const pl = $('#party-list'), psig = g.parties.map(q => q.id + ':' + q.wins + ':' + q.members.map(id => { const m = g.people.find(p => p.id === id); return m ? m.lvl : 0; }).join('.')).join(',');
+    if (pl._sig !== psig) { pl._sig = psig; pl.innerHTML = g.parties.length ? g.parties.map(partyRow).join('') : '<div class="empty-ap">아직 파티가 없습니다. 사도가 둘 이상이면 서로 뭉치기도 합니다.</div>'; paintPeople(pl); }
     set($('#hall-list'), g.hall.slice().reverse(), hh => personRow(hh, (HALL_TAG[hh.fate] || ['기록', ''])[0] + (hh.patron >= 0 ? ' · ' + D.constellations[hh.patron].name : ''), (HALL_TAG[hh.fate] || ['', ''])[1]));
     statRows($('#saga-stats'), [
       ['운명 사건', fmtInt(g.stats.fates) + '회'], ['전조', fmtInt(g.stats.omens) + '회'], ['사도의 죽음', fmtInt(g.stats.deaths)], ['배신', fmtInt(g.stats.betrayals)],
-      ['타락', fmtInt(g.stats.falls)], ['성좌들이 가져간 반물질', fmt(g.stats.taken), true]
+      ['타락', fmtInt(g.stats.falls)], ['구원', fmtInt(g.stats.redeemed || 0)], ['결성된 파티', fmtInt(g.stats.parties || 0)],
+      ['성좌들이 가져간 반물질', fmt(g.stats.taken), true], ['자리 비운 사이 거둬 간 공물', fmt(g.stats.tribute || 0)]
     ]);
   }
 
@@ -1047,8 +1073,8 @@
     if (p.c === selConst && tab === 'stars' && subTab.stars === 'sanct' && p.text && !['battle', 'take'].includes(p.kind)) {
       showBubble(nums(p.kind === 'voice' ? p.text.replace(/^성좌 '[^']+'(이|가)\s*/, '') : p.text), ['death', 'fall', 'betray'].includes(p.kind) ? 'angry' : ['pick', 'level', 'sponsor', 'save'].includes(p.kind) ? 'cheer' : null);
     }
-    const icon = { death: '🪦', fall: '😈', betray: '🗡', pick: '✨' }[p.kind];
-    if (icon) { toast(esc(nums(p.text)), icon, p.kind === 'pick' ? 'gold' : 'red'); if (p.kind !== 'pick') sfx.error(); else sfx.achieve(); }
+    const icon = { death: '🪦', fall: '😈', betray: '🗡', pick: '✨', redeem: '🕊' }[p.kind];
+    if (icon) { toast(esc(nums(p.text)), icon, ['pick', 'redeem'].includes(p.kind) ? 'gold' : 'red'); if (!['pick', 'redeem'].includes(p.kind)) sfx.error(); else sfx.achieve(); }
     else if (p.kind === 'omen-big') toast('<b>큰 전조</b> · ' + esc(nums(p.text)), '🔮', 'violet');
   }
   function onFateDone(o) {
@@ -1230,7 +1256,7 @@
   }
   function resetViewCaches() {
     [$('#history-list'), $('#gx-grid'), effectsEl].forEach(el => { el._sig = null; });
-    [$('#sanct-feed'), $('#global-feed'), $('#free-list'), $('#fallen-list'), $('#hall-list')].forEach(el => { el._sig = null; });
+    [$('#sanct-feed'), $('#global-feed'), $('#free-list'), $('#fallen-list'), $('#hall-list'), $('#party-list')].forEach(el => { el._sig = null; });
     pickEls.forEach(r => { r.awake = null; }); faceFor = -1; if (apEls) apEls.drawn = null;
     challEls.forEach(r => { r.state = ''; });
     gxIndex = -1;
@@ -1251,8 +1277,11 @@
   }
 
   function sagaAwayHTML(g) {
-    if (!g || !(g.fates || g.deaths || g.falls || g.betrayals || g.highlights.length)) return '';
-    return '<div class="modal-box"><h4>' + (S.constellations.filter(c => c.apostleFound).length > 1 ? '그동안 성좌들 사이에서는…' : '그동안 성좌의 세계에서는…') + '</h4>운명 사건 ' + g.fates + '회 · 사도의 죽음 ' + g.deaths + ' · 배신 ' + g.betrayals + ' · 타락 ' + g.falls +
+    if (!g) return '';
+    const tr = g.tribute ? '<div class="modal-box"><h4>성좌들이 거둬 간 공물</h4><b style="color:#ffb27a">반물질 −' + fmt(g.tribute.total) + '</b> <small>(획득량의 ' + Math.round(g.tribute.frac * 100) + '%)</small><br>' +
+      g.tribute.parts.map(x => EMBLEMS[x.i] + ' ' + esc(D.constellations[x.i].name) + ' ' + fmt(x.amount)).join(' · ') + '<br><small>성좌들은 이 성력으로 자리를 비운 동안 사도를 돌봤습니다.</small></div>' : '';
+    if (!(g.fates || g.deaths || g.falls || g.betrayals || g.redeemed || g.parties || g.highlights.length)) return tr;
+    return tr + '<div class="modal-box"><h4>' + (S.constellations.filter(c => c.apostleFound).length > 1 ? '그동안 성좌들 사이에서는…' : '그동안 성좌의 세계에서는…') + '</h4>운명 사건 ' + g.fates + '회 · 사도의 죽음 ' + g.deaths + ' · 배신 ' + g.betrayals + ' · 타락 ' + g.falls + ' · 구원 ' + (g.redeemed || 0) + ' · 파티 결성 ' + (g.parties || 0) +
       (g.highlights.length ? '<br><br>' + g.highlights.map(t => '· ' + esc(t)).join('<br>') : '') + '</div>';
   }
 

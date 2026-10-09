@@ -195,3 +195,107 @@ test('한국어 조사: 이름 받침에 맞춰 이/가·을/를·과/와를 고
   assert.equal(saga.fillName('{A}의 눈빛', 'A', '루나', '사도 '), '사도 루나의 눈빛');
   assert.equal(saga.fillName('타락한 자 {F}가 왔다', 'F', '로아', '타락한 '), '타락한 자 로아가 왔다');
 });
+
+test('오프라인 공물: 깨어난 성좌만 영향력 비율로 획득량의 10%를 성력으로 거둬 간다', () => {
+  const s = world(2);
+  s.matter = new BigNum(1, 20);
+  const gain = new BigNum(1, 19);
+  const r = saga.tribute(s, gain, NOW);
+  assert.ok(r && Math.abs(r.total.div(gain).toNumber() - 0.1) < 1e-9);
+  assert.ok(Math.abs(s.matter.div(new BigNum(1, 20)).toNumber() - 0.99) < 1e-9);
+  assert.ok(!s.saga.power[0].isZero() && !s.saga.power[1].isZero() && s.saga.power[2].isZero());
+  assert.equal(saga.tribute(world(0), gain, NOW), null, '깨어난 성좌가 없으면 거둬 가지 않음');
+});
+
+test('타락: 가장 크게 쌓인 원인이 기록되고, 원인에 따라 원한이 정해진다', () => {
+  const s = world(1);
+  saga.ensureWorld(s, NOW); saga.choose(s, 0, NOW);
+  const ap = saga.apostleOf(s, 0);
+  ap.corrupt = 0; ap.cs = {};
+  saga.corruptBy(ap, 30, 'dark'); saga.corruptBy(ap, 80, 'neglect');
+  saga.fall(s, ap, NOW);
+  assert.equal(ap.status, 'fallen');
+  assert.equal(ap.cause, 'neglect');
+  assert.equal(ap.grudge, 3);
+  assert.equal(ap.patron, 0, '옛 주인을 기억한다');
+  assert.ok(s.saga.feed.some(e => e.kind === 'fall' && e.text.includes('후원이 끊긴')));
+});
+
+test('타락한 자는 옛 주인의 성력을 훔치거나 사도에게 속삭인다', () => {
+  const s = world(2);
+  saga.ensureWorld(s, NOW); saga.choose(s, 0, NOW); saga.choose(s, 1, NOW);
+  const f = saga.apostleOf(s, 0);
+  saga.corruptBy(f, 100, 'neglect'); saga.fall(s, f, NOW);
+  s.saga.power[0] = new BigNum(1, 30);
+  const kinds = new Set();
+  for (let k = 0; k < 600 && kinds.size < 2; k++) { const r = saga.fallenAct(s, f, NOW + k); if (r) kinds.add(r); }
+  assert.ok(kinds.has('steal') && kinds.has('whisper'), [...kinds].join(','));
+  assert.ok(s.saga.power[0].lt(new BigNum(1, 30)), '성력이 줄었다');
+  const v = saga.apostleOf(s, 1) || saga.fallen(s).find(p => p !== f);
+  assert.ok(v.cs.whisper > 0, '속삭임이 타락 원인으로 남는다');
+});
+
+test('성좌는 잃은 사도를 쫓는다: 이기면 구원하거나 없애고, 지면 원한이 깊어진다', () => {
+  const outs = new Set();
+  for (let seed = 1; seed < 60 && outs.size < 3; seed++) {
+    const s = world(1);
+    saga.ensureWorld(s, NOW); saga.choose(s, 0, NOW);
+    const f = saga.apostleOf(s, 0);
+    saga.corruptBy(f, 100, 'dark'); saga.fall(s, f, NOW);
+    saga.choose(s, 0, NOW);
+    const h = saga.apostleOf(s, 0);
+    h.lvl = 5 + seed % 20; h.atk = 10 + seed * 3;
+    for (let k = 0; k < seed * 3; k++) core.random();
+    const out = saga.clash(s, h, f, NOW);
+    outs.add(out);
+    if (out === 'redeem') { assert.equal(f.status, 'free'); assert.equal(f.title, '구원받은 자'); }
+    if (out === 'destroy') assert.ok(!s.saga.people.includes(f) && s.saga.hall.some(x => x.name === f.name && x.fate === 'destroyed'));
+    if (out === 'escape') assert.equal(f.grudge, 3, '어둠으로 타락(원한 2) → 놓치면 3');
+  }
+  assert.ok(outs.has('redeem') && outs.has('destroy'), [...outs].join(','));
+});
+
+test('파티: 사도 둘 이상이면 결성되고, 혼자보다 높은 레벨의 몬스터와 싸운다', () => {
+  const s = world(4);
+  saga.ensureWorld(s, NOW);
+  for (let i = 0; i < 4; i++) saga.choose(s, i, NOW);
+  let q = null;
+  for (let k = 0; k < 400 && !q; k++) q = saga.formParty(s, NOW + k);
+  assert.ok(q && q.members.length >= 2 && q.members.length <= 4);
+  const ms = q.members.map(id => s.saga.people.find(p => p.id === id));
+  ms.forEach(p => { assert.equal(p.party, q.id); p.hp = p.maxHp; });
+  const avg = ms.reduce((a, p) => a + p.lvl, 0) / ms.length;
+  const r = saga.partyBattle(s, q, NOW + 1000);
+  assert.ok(r === 'win' || r === 'lose');
+  const lead = ms.find(p => p.act && p.act.party === q.id);
+  assert.ok(lead, '파티 전투 기록');
+  assert.ok(saga.partyMembers(s, ms[0]).length === ms.filter(p => p.status === 'apostle').length);
+  assert.ok(s.saga.feed.some(e => e.kind === 'party' && e.text.includes(q.name)));
+  assert.ok(avg >= 1);
+});
+
+test('저장 후 불러오기: 파티·타락 원인·원한 유지, 깨진 파티는 정리', () => {
+  const s = world(3);
+  saga.ensureWorld(s, NOW);
+  for (let i = 0; i < 3; i++) saga.choose(s, i, NOW);
+  let q = null;
+  for (let k = 0; k < 400 && !q; k++) q = saga.formParty(s, NOW + k);
+  const f = saga.livingApostles(s).find(p => !q.members.includes(p.id));
+  if (f) { saga.corruptBy(f, 100, 'fear'); saga.fall(s, f, NOW); }
+  const raw = JSON.parse(core.serialize(s, NOW));
+  raw.saga.parties.push({ id: 999, name: '유령', members: [123456, 7], wins: 1 });
+  const r = core.revive(raw, NOW + 1000).saga;
+  assert.equal(r.parties.length, 1);
+  assert.deepEqual(r.parties[0].members, q.members);
+  r.parties[0].members.forEach(id => assert.equal(r.people.find(p => p.id === id).party, q.id));
+  if (f) { const g = r.people.find(p => p.id === f.id); assert.equal(g.cause, 'fear'); assert.equal(g.grudge, 2); }
+});
+
+test('성좌·사도 배율은 반물질(1차원)에만 붙어 차원끼리 불어나지 않는다', () => {
+  const s = world(1);
+  s.constellations[0].level = 10;
+  const m = core.dimMults(s, NOW);
+  const base = core.dimMults(Object.assign(world(0), { saga: s.saga }), NOW);
+  assert.ok(Math.abs(m[0].div(base[0]).toNumber() - core.starMult(s, NOW)) < 1e-6);
+  for (let i = 1; i < 8; i++) assert.ok(Math.abs(m[i].div(base[i]).toNumber() - 1) < 1e-9, '차원 ' + (i + 1));
+});

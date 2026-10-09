@@ -560,6 +560,19 @@ canvas.frame-ico { padding: 0; width: 40px; height: 40px; border-radius: 10px; }
 .ap-stats div { text-align: center; padding: 5px 0; border-radius: 6px; background: rgba(0, 0, 0, .3); font: 700 .7rem var(--mono); }
 .ap-stats small { display: block; font: 600 .56rem var(--sans); color: var(--muted); }
 .empty-ap { padding: 14px; text-align: center; color: var(--muted); font-size: .78rem; }
+.ap-faith { font-size: .68rem; color: var(--cyan-2); margin-top: 2px; }
+.ap-party { margin-top: 6px; padding: 6px 8px; border-radius: 6px; background: rgba(0, 0, 0, .25); font-size: .68rem; line-height: 1.5; }
+.ap-party small { color: var(--muted); }
+.ap-lost:empty { display: none; }
+.ap-lost { margin-top: 8px; padding: 6px 8px; border-radius: 6px; border: 1px solid rgba(155, 43, 255, .35); background: rgba(60, 10, 90, .25); font-size: .7rem; }
+.lost-title { font-weight: 700; color: #d0a0ff; margin-bottom: 3px; }
+.lost-row small { color: var(--muted); }
+.grudge { color: #ff6a8a; letter-spacing: 1px; font-size: .62rem; }
+.party-row { padding: 6px 8px; border-radius: 8px; background: rgba(0, 0, 0, .25); font-size: .74rem; }
+.party-row small { color: var(--muted); }
+.party-ms { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 4px; }
+.party-ms span { display: inline-flex; align-items: center; gap: 3px; }
+.party-ms canvas { width: 18px; height: 22px; }
 .feed { display: flex; flex-direction: column; gap: 4px; max-height: 340px; overflow-y: auto; }
 .feed-row { display: grid; grid-template-columns: 38px 1fr; gap: 8px; padding: 6px 8px; border-radius: 6px; font-size: .74rem; line-height: 1.45; background: rgba(0, 0, 0, .25); border-left: 2px solid var(--line); }
 .feed-row time { font: 600 .6rem var(--mono); color: var(--dim); padding-top: 2px; }
