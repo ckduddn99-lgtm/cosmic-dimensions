@@ -2,691 +2,249 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#05060f">
   <link rel="icon" href="data:,">
   <title>초공간 차원 붕괴: 인피니티</title>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700;800&display=swap');
-    :root{
-      color-scheme:dark;
-      --bg:#04060d;--bg2:#0a0f1e;
-      --surface:rgba(13,20,38,.78);--surface-strong:#0d1426;--surface-glass:rgba(16,24,46,.62);
-      --line:rgba(140,180,255,.14);--line-bright:rgba(120,200,255,.45);
-      --text:#eef4ff;--muted:#8b9bb8;
-      --cyan:#5fd7f5;--cyan-bright:#9cecff;--cyan-soft:rgba(95,215,245,.1);
-      --gold:#f5b942;--gold-bright:#ffd97a;--gold-soft:rgba(245,185,66,.1);
-      --violet:#a78bfa;--green:#4ade9e;--danger:#ff708d;
-      --shadow:0 24px 70px rgba(0,0,0,.55);
-      --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Consolas,monospace;
-      --sans:"IBM Plex Sans KR",sans-serif;
-    }
-    *{box-sizing:border-box}
-    html{scroll-behavior:smooth;background:var(--bg)}
-    body{margin:0;min-height:100vh;color:var(--text);font-family:var(--sans);overflow-x:hidden;
-      background:
-        radial-gradient(ellipse 60% 40% at 50% -5%,rgba(90,60,180,.22),transparent 70%),
-        radial-gradient(ellipse 50% 35% at 85% 110%,rgba(0,140,200,.12),transparent 70%),
-        linear-gradient(180deg,#04060d,#070b16 60%,#04060d)}
-    button,input,textarea{font:inherit;color:inherit}
-    button:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
-    button:disabled{opacity:.35;cursor:not-allowed}
-    #starfield{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;opacity:.7;z-index:0}
-    .app{position:relative;z-index:1;width:min(1240px,100%);margin:auto;padding:12px 12px 80px}
-
-    /* ── 상단바 ── */
-    .topbar{position:sticky;top:8px;z-index:40;display:flex;justify-content:space-between;align-items:center;gap:12px;
-      padding:10px 16px;border:1px solid var(--line);border-radius:16px;
-      background:rgba(8,13,26,.82);backdrop-filter:blur(22px) saturate(150%);-webkit-backdrop-filter:blur(22px) saturate(150%);
-      box-shadow:var(--shadow)}
-    .logo{font-size:1.05rem;font-weight:800;letter-spacing:-.02em;white-space:nowrap;
-      background:linear-gradient(120deg,#fff,var(--gold-bright));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
-    .logo-sub{display:block;font-size:.58rem;font-weight:600;letter-spacing:.5em;color:var(--muted);-webkit-text-fill-color:var(--muted);margin-top:2px}
-    .res-chips{display:flex;gap:8px}
-    .chip{display:flex;align-items:center;gap:8px;padding:7px 12px;border:1px solid var(--line);border-radius:12px;
-      background:rgba(20,30,55,.6);min-width:0}
-    .chip-ico{font-size:1rem;filter:drop-shadow(0 0 6px rgba(245,185,66,.6))}
-    .chip-val{font:700 .82rem/1.2 var(--mono);color:var(--gold-bright);white-space:nowrap;font-variant-numeric:tabular-nums}
-    .chip-label{font-size:.6rem;color:var(--muted)}
-
-    /* ── 레이아웃 ── */
-    .layout{margin-top:12px}
-    .sidebar{display:flex;gap:6px;overflow-x:auto;padding:4px 2px 10px;scrollbar-width:none}
-    .sidebar::-webkit-scrollbar{display:none}
-    .tab{flex:0 0 auto;display:flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--surface-glass);
-      color:var(--muted);border-radius:12px;padding:9px 14px;font-size:.8rem;font-weight:700;cursor:pointer;white-space:nowrap;
-      transition:all .2s}
-    .tab-ico{font-size:.95rem}
-    .tab:hover{color:var(--text);border-color:var(--line-bright)}
-    .tab.active{color:#0a0f1e;background:linear-gradient(135deg,var(--gold-bright),var(--gold));
-      border-color:transparent;box-shadow:0 6px 22px rgba(245,185,66,.35)}
-    main{min-width:0}
-    .pane{display:none}
-    .pane.active{display:block;animation:paneIn .28s ease-out}
-    @keyframes paneIn{from{opacity:.3;transform:translateY(6px)}to{opacity:1;transform:none}}
-    @media(min-width:960px){
-      .layout{display:grid;grid-template-columns:172px minmax(0,1fr);gap:16px;align-items:start}
-      .sidebar{position:sticky;top:86px;flex-direction:column;overflow:visible;padding:0}
-      .tab{justify-content:flex-start;padding:12px 14px;font-size:.85rem}
-      .app{padding:16px 20px 90px}
-    }
-
-    /* ── 히어로 ── */
-    .hero{position:relative;border-radius:20px;overflow:hidden;border:1px solid rgba(245,185,66,.25);
-      box-shadow:0 0 60px rgba(120,60,220,.25),var(--shadow);margin-bottom:14px;min-height:300px;display:flex}
-    .hero-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scale(1.05);animation:heroDrift 24s ease-in-out infinite alternate}
-    @keyframes heroDrift{from{transform:scale(1.05) translateX(-1%)}to{transform:scale(1.12) translateX(1%)}}
-    .hero::after{content:"";position:absolute;inset:0;
-      background:linear-gradient(180deg,rgba(4,6,13,.25) 0%,rgba(4,6,13,.05) 35%,rgba(4,6,13,.78) 100%)}
-    .hero-inner{position:relative;z-index:1;margin-top:auto;width:100%;padding:26px 22px 20px;text-align:center}
-    .hero-label{font-size:.8rem;font-weight:600;letter-spacing:.35em;color:var(--gold-bright);text-shadow:0 0 18px rgba(245,185,66,.7)}
-    .hero-matter{font:800 clamp(2.4rem,9vw,4.2rem)/1.05 var(--mono);letter-spacing:-.04em;margin:8px 0 4px;
-      background:linear-gradient(180deg,#fff 20%,var(--cyan-bright) 60%,var(--violet));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
-      filter:drop-shadow(0 0 26px rgba(95,215,245,.55));font-variant-numeric:tabular-nums;word-break:break-all}
-    .hero-rate{font:700 clamp(1rem,3.4vw,1.35rem) var(--mono);color:var(--green);text-shadow:0 0 16px rgba(74,222,158,.6)}
-    .hero-sub{margin-top:8px;font:500 .72rem var(--mono);color:var(--muted)}
-    .progress-rail{height:5px;margin:12px auto 0;max-width:520px;background:rgba(255,255,255,.12);border-radius:99px;overflow:hidden}
-    .progress-fill{height:100%;width:0;background:linear-gradient(90deg,var(--violet),var(--cyan),var(--gold));box-shadow:0 0 14px var(--cyan);transition:width .4s ease}
-    .pulse{animation:valuePulse .24s ease-out}
-    @keyframes valuePulse{50%{filter:brightness(1.6)}}
-
-    /* ── 구매 바 ── */
-    .buy-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;margin-bottom:12px;
-      padding:10px 12px;border:1px solid var(--line);border-radius:14px;background:var(--surface-glass);backdrop-filter:blur(14px)}
-    .buy-mode{display:flex;gap:4px;padding:3px;border:1px solid var(--line);border-radius:10px;background:rgba(0,0,0,.3)}
-    .mode-btn{min-width:52px;border:0;background:transparent;color:var(--muted);border-radius:7px;padding:8px 10px;font:700 .74rem var(--mono);cursor:pointer}
-    .mode-btn.active{background:var(--cyan);color:#06121f;box-shadow:0 0 14px rgba(95,215,245,.5)}
-    .primary,.secondary,.danger-btn{border-radius:10px;padding:10px 14px;font-size:.78rem;font-weight:700;cursor:pointer;transition:transform .14s,filter .14s,box-shadow .14s;background:transparent;border:1px solid var(--line)}
-    .primary{background:linear-gradient(135deg,var(--gold-bright),var(--gold));border-color:transparent;color:#231500;box-shadow:0 6px 20px rgba(245,185,66,.3)}
-    .secondary{background:var(--cyan-soft);border-color:rgba(95,215,245,.35);color:var(--cyan-bright)}
-    .danger-btn{border-color:rgba(255,112,141,.4);color:var(--danger)}
-    .primary:hover:not(:disabled),.secondary:hover:not(:disabled){transform:translateY(-1px);filter:brightness(1.1)}
-
-    /* ── 차원 카드 ── */
-    .dim-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-    @media(min-width:700px){.dim-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
-    .dim-card{position:relative;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--surface-glass);
-      backdrop-filter:blur(12px);transition:transform .2s,box-shadow .2s,border-color .2s;display:flex;flex-direction:column}
-    .dim-card:hover:not(.locked){transform:translateY(-3px);border-color:var(--line-bright);box-shadow:0 14px 40px rgba(0,0,0,.5),0 0 24px rgba(95,215,245,.15)}
-    .dim-card.locked{opacity:.55;filter:saturate(.4)}
-    .dim-art{position:relative;aspect-ratio:1/.82;overflow:hidden}
-    .dim-art img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .4s}
-    .dim-card:hover:not(.locked) .dim-art img{transform:scale(1.07)}
-    .dim-art::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 40%,rgba(6,10,22,.9))}
-    .dim-roman{position:absolute;top:8px;left:10px;z-index:2;font:800 1.05rem var(--mono);color:#fff;
-      text-shadow:0 0 12px rgba(167,139,250,.9),0 2px 4px rgba(0,0,0,.8)}
-    .dim-lock{position:absolute;top:8px;right:10px;z-index:2;font-size:1rem;filter:drop-shadow(0 2px 4px rgba(0,0,0,.8))}
-    .dim-body{padding:10px 12px 12px;display:flex;flex-direction:column;gap:5px;flex:1}
-    .dim-name{font-size:.92rem;font-weight:800;letter-spacing:-.01em}
-    .dim-mastery{font-size:.68rem;color:var(--violet);font-weight:700}
-    .dim-rate{font:700 .8rem var(--mono);color:var(--green);font-variant-numeric:tabular-nums}
-    .dim-lv{font:600 .72rem var(--mono);color:var(--muted)}
-    .dim-progress{height:5px;background:rgba(255,255,255,.09);border-radius:99px;overflow:hidden;margin-top:2px}
-    .dim-progress-fill{height:100%;background:linear-gradient(90deg,var(--cyan),var(--violet));box-shadow:0 0 10px rgba(95,215,245,.7);border-radius:99px;transition:width .3s}
-    .dim-buy-btn{margin-top:6px;border:1px solid rgba(245,185,66,.5);background:var(--gold-soft);color:var(--gold-bright);
-      border-radius:10px;padding:9px 8px;font-size:.74rem;font-weight:800;cursor:pointer;transition:all .18s;font-family:var(--mono)}
-    .dim-buy-btn:hover:not(:disabled){background:linear-gradient(135deg,var(--gold-bright),var(--gold));color:#231500;box-shadow:0 0 18px rgba(245,185,66,.45)}
-    .buff-banner{grid-column:1/-1;background:linear-gradient(90deg,#ff6b35,#ffd23f);color:#1a0d00;font-weight:800;text-align:center;
-      padding:10px;border-radius:12px;animation:buffBlink 1.2s infinite}
-    @keyframes buffBlink{0%,100%{opacity:1}50%{opacity:.75}}
-
-    /* ── 섹션 타이틀 / 액션 카드 ── */
-    .section-title{margin:22px 4px 12px;font-size:1.05rem;font-weight:800;letter-spacing:-.01em;
-      background:linear-gradient(120deg,#fff,var(--gold-bright));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
-    .action-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-    @media(min-width:700px){.action-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
-    .act-card{position:relative;border:1px solid var(--line);border-radius:16px;padding:16px 14px;background:var(--surface-glass);
-      backdrop-filter:blur(12px);display:flex;flex-direction:column;gap:7px;overflow:hidden;transition:transform .2s,border-color .2s}
-    .act-card:hover{transform:translateY(-3px)}
-    .act-card.ready{border-color:rgba(74,222,158,.55);box-shadow:0 0 26px rgba(74,222,158,.18)}
-    .act-card.ready::after{content:"✦";position:absolute;top:10px;right:12px;color:var(--green);animation:blink 1.1s infinite}
-    @keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
-    .act-card.crunch{border-color:rgba(167,139,250,.45);background:linear-gradient(150deg,rgba(90,50,180,.28),var(--surface-glass))}
-    .act-icon{font-size:1.5rem;filter:drop-shadow(0 0 10px rgba(245,185,66,.5))}
-    .act-title{font-size:.95rem;font-weight:800}
-    .act-desc{font-size:.72rem;color:var(--muted);line-height:1.5;min-height:2.6em}
-    .act-req{font:600 .7rem var(--mono);color:var(--cyan-bright)}
-    .act-next{font-size:.7rem;color:var(--gold-bright);opacity:.9}
-    .act-btn{margin-top:auto;border:1px solid rgba(95,215,245,.45);background:var(--cyan-soft);color:var(--cyan-bright);
-      border-radius:10px;padding:10px;font-weight:800;font-size:.8rem;cursor:pointer;transition:all .18s}
-    .act-btn:hover:not(:disabled){background:var(--cyan);color:#06121f;box-shadow:0 0 18px rgba(95,215,245,.5)}
-    .act-card.crunch .act-btn{border-color:rgba(167,139,250,.6);background:rgba(167,139,250,.14);color:#d6c6ff}
-    .act-card.crunch .act-btn:hover:not(:disabled){background:var(--violet);color:#120826}
-
-    /* ── 패널 공통 ── */
-    .panel{border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:12px;background:var(--surface-glass);backdrop-filter:blur(12px)}
-    .panel-title{margin:0 0 6px;font-size:1rem;font-weight:800}
-    .panel-copy{margin:0 0 4px;color:var(--muted);font-size:.78rem;line-height:1.55}
-    .metric{margin:16px 0 10px;font:800 clamp(1.4rem,4vw,2rem) var(--mono);color:var(--cyan-bright);text-shadow:0 0 20px rgba(95,215,245,.4)}
-    .metric small{font-size:.7rem;color:var(--muted)}
-    .page-head{margin:4px 2px 14px}
-    .page-head h2{margin:0;font-size:1.3rem;font-weight:800;letter-spacing:-.02em;
-      background:linear-gradient(120deg,#fff,var(--cyan-bright));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
-    .page-head p{margin:6px 0 0;color:var(--muted);font-size:.78rem}
-
-    /* ── 틱스피드 ── */
-    .engine{display:grid;gap:14px;align-items:center}
-    @media(min-width:700px){.engine{grid-template-columns:1fr auto}}
-    .engine-visual{position:relative;width:120px;height:120px;border:1px solid var(--line-bright);border-radius:50%;display:grid;place-items:center;
-      box-shadow:inset 0 0 30px rgba(95,215,245,.15),0 0 26px rgba(95,215,245,.2);justify-self:center}
-    .engine-visual::before,.engine-visual::after{content:"";position:absolute;border:1px dashed var(--line-bright);border-radius:50%;animation:spin 9s linear infinite}
-    .engine-visual::before{inset:14px}.engine-visual::after{inset:30px;animation-direction:reverse;animation-duration:6s}
-    .engine-core{width:20px;height:20px;border-radius:50%;background:var(--cyan);box-shadow:0 0 24px var(--cyan)}
-    @keyframes spin{to{transform:rotate(360deg)}}
-
-    /* ── 인피니티 업그레이드 ── */
-    .upgrade-grid{display:grid;grid-template-columns:1fr;gap:10px;margin-top:12px}
-    @media(min-width:700px){.upgrade-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-    .upgrade{border:1px solid rgba(245,185,66,.28);border-radius:14px;padding:15px;background:linear-gradient(140deg,rgba(245,185,66,.07),transparent)}
-    .upgrade.bought{border-color:rgba(74,222,158,.45);background:rgba(74,222,158,.06)}
-    .upgrade h3{margin:0 0 6px;font-size:.88rem;color:var(--gold-bright)}
-    .upgrade p{min-height:2.6em;margin:0 0 12px;color:var(--muted);font-size:.74rem;line-height:1.5}
-
-    /* ── 성좌 ── */
-    .constellation-grid{display:grid;grid-template-columns:1fr;gap:10px}
-    @media(min-width:700px){.constellation-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-    .const-card{border:1px solid var(--line);border-radius:16px;padding:16px;background:var(--surface-glass);backdrop-filter:blur(12px)}
-    .const-card.unlocked{border-color:rgba(245,185,66,.55);box-shadow:0 0 26px rgba(245,185,66,.12)}
-    .const-name{font-size:1.05rem;font-weight:800;color:var(--gold-bright)}
-    .const-title{font-size:.76rem;color:var(--muted);margin:3px 0}
-    .const-desc{font-size:.8rem;color:var(--text);opacity:.85;margin:8px 0;line-height:1.5}
-    .const-level{font:700 .82rem var(--mono);color:var(--cyan-bright);margin:8px 0}
-    .apostle-box{margin-top:12px;padding:12px;background:rgba(0,0,0,.35);border-radius:12px;border-left:3px solid var(--gold)}
-    .apostle-head{font-weight:800;color:#ffe87a}
-    .apostle-head small{color:var(--muted);font-weight:400}
-    .apostle-personality{font-size:.74rem;color:var(--muted);font-style:italic;margin:5px 0}
-    .skill-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:8px 0;font-size:.8rem;flex-wrap:wrap}
-    .skill-desc{color:var(--muted);font-size:.7rem;flex:1;min-width:120px}
-    .small{padding:6px 10px;font-size:.72rem}
-    .apostle-log{margin-top:8px;max-height:130px;overflow-y:auto}
-    .log-row{font-size:.72rem;color:var(--cyan-bright);padding:4px 0;border-bottom:1px solid rgba(255,255,255,.06)}
-
-    /* ── 도전 ── */
-    .challenge-grid{display:grid;grid-template-columns:1fr;gap:10px}
-    @media(min-width:700px){.challenge-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
-    .chall-card{border:1px solid var(--line);border-radius:16px;padding:16px;background:var(--surface-glass);display:flex;flex-direction:column;gap:7px}
-    .chall-card.done{border-color:rgba(74,222,158,.5);opacity:.75}
-    .chall-card.active{border-color:rgba(255,107,53,.6);box-shadow:0 0 26px rgba(255,107,53,.18)}
-    .chall-name{font-size:1rem;font-weight:800}
-    .chall-debuff{color:var(--danger);font-size:.8rem}
-    .chall-goal,.chall-reward{font-size:.78rem;color:var(--muted)}
-    .chall-status{color:var(--green);font-weight:800;margin-top:6px}
-
-    /* ── 업적 ── */
-    .achievement-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-    @media(min-width:700px){.achievement-grid{grid-template-columns:repeat(6,minmax(0,1fr))}}
-    .achievement{min-height:104px;border:1px solid var(--line);border-radius:12px;padding:10px;display:flex;flex-direction:column;justify-content:space-between;background:var(--surface-glass)}
-    .achievement.locked{filter:saturate(.15);opacity:.5}
-    .achievement.unlocked{border-color:rgba(74,222,158,.4);background:linear-gradient(145deg,rgba(74,222,158,.1),var(--surface-glass))}
-    .ach-code{font:600 .62rem var(--mono);color:var(--muted)}
-    .ach-mark{width:28px;height:28px;border-radius:50%;border:1px solid var(--line);display:grid;place-items:center;color:var(--muted);font:700 .78rem var(--mono)}
-    .unlocked .ach-mark{color:var(--green);border-color:var(--green);box-shadow:0 0 12px rgba(74,222,158,.25)}
-    .ach-name{font-size:.72rem;font-weight:700;line-height:1.35}
-    .secret-divider{grid-column:1/-1;text-align:center;color:var(--muted);margin:14px 0 4px;font-size:.82rem;letter-spacing:.3em}
-    .achievement.secret.locked{opacity:.45}
-
-    /* ── 통계 / 설정 ── */
-    .stats-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
-    @media(min-width:700px){.stats-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
-    .stat-card{border:1px solid var(--line);border-radius:12px;padding:14px;background:var(--surface-glass)}
-    .stat-label{color:var(--muted);font-size:.68rem}
-    .stat-value{margin-top:8px;font:700 1rem/1.35 var(--mono);color:var(--cyan-bright);overflow:hidden;text-overflow:ellipsis}
-    .history{margin-top:12px}
-    .history-row{display:grid;grid-template-columns:1fr auto;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);font-size:.76rem}
-    .history-row span:last-child{font-family:var(--mono);color:var(--muted)}
-    .settings-grid{display:grid;grid-template-columns:1fr;gap:12px}
-    @media(min-width:700px){.settings-grid{grid-template-columns:1fr 1fr}}
-    .button-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
-    .save-note{margin-top:12px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;color:var(--muted);font-size:.7rem;line-height:1.55}
-    .file-input{display:none}
-    .toggle-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--line);font-size:.78rem}
-    .switch{position:relative;width:44px;height:24px;border:1px solid var(--line);border-radius:99px;background:rgba(0,0,0,.4);cursor:pointer}
-    .switch::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:var(--muted);transition:.2s}
-    .switch.on{background:rgba(95,215,245,.2);border-color:var(--cyan)}
-    .switch.on::after{left:23px;background:var(--cyan);box-shadow:0 0 10px var(--cyan)}
-
-    /* ── 모달 / 토스트 ── */
-    .modal-backdrop{position:fixed;inset:0;z-index:100;display:none;place-items:center;padding:18px;background:rgba(2,4,10,.75);backdrop-filter:blur(10px)}
-    .modal-backdrop.open{display:grid}
-    .modal{width:min(440px,100%);border:1px solid var(--line-bright);border-radius:18px;padding:22px;background:#0c1322;box-shadow:0 24px 100px rgba(0,0,0,.6);animation:modalIn .2s ease-out}
-    .modal h2{margin:0 0 8px;font-size:1.15rem}
-    .modal p{margin:0;color:var(--muted);font-size:.8rem;line-height:1.6}
-    .modal-summary{margin:14px 0;padding:13px;border:1px solid var(--line);border-radius:10px;background:var(--cyan-soft);font:600 .75rem/1.55 var(--mono)}
-    .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
-    @keyframes modalIn{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:none}}
-    .toast-stack{position:fixed;left:12px;right:12px;bottom:12px;z-index:120;display:grid;gap:8px;pointer-events:none;justify-items:center}
-    @media(min-width:700px){.toast-stack{left:auto;right:18px;bottom:18px}}
-    .toast{width:min(360px,100%);border:1px solid var(--line-bright);border-radius:12px;padding:11px 14px;background:#0c1322;
-      box-shadow:var(--shadow);font-size:.76rem;font-weight:600;animation:toastIn .25s ease-out}
-    .toast b{color:var(--gold-bright)}
-    @keyframes toastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-    .float-num{position:fixed;z-index:80;pointer-events:none;color:var(--green);font:700 .78rem var(--mono);text-shadow:0 1px 8px #000;animation:floatUp .85s ease-out forwards}
-    @keyframes floatUp{to{transform:translateY(-42px);opacity:0}}
-    .hidden{display:none!important}
-  
-.research-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px;margin-top:12px}
-.research-card{background:rgba(20,25,45,.8);border:1px solid rgba(100,150,255,.2);border-radius:10px;padding:12px}
-.research-card.maxed{border-color:#7CFC9A;opacity:.8}
-.research-name{font-weight:700;color:#c77dff}
-.research-desc{font-size:.78rem;color:#aaa;margin:4px 0}
-.research-level{font-size:.8rem;color:#9fd8ff;margin:4px 0}
-.research-bar{height:4px;background:rgba(255,255,255,.1);border-radius:2px;margin:6px 0;overflow:hidden}
-.research-fill{height:100%;background:linear-gradient(90deg,#c77dff,#6FD2F5);transition:width .3s}
-.galaxy-collection{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
-.galaxy-chip{background:rgba(138,43,226,.2);border:1px solid rgba(138,43,226,.4);border-radius:20px;padding:6px 12px;font-size:.78rem;color:#d8b4fe}
-.empty-msg{color:#666;font-size:.85rem;padding:20px;text-align:center}
-.event-banner{background:linear-gradient(90deg,#8A2BE2,#FF6B35);color:#fff;font-weight:700;text-align:center;padding:10px;border-radius:10px;margin-bottom:12px;animation:pulse 1s infinite}
-
-.search-status{margin:8px 0}
-.search-label{font-size:.8rem;color:#9fd8ff;margin-bottom:4px}
-.search-bar{height:6px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden}
-.search-fill{height:100%;background:linear-gradient(90deg,#FFD700,#FF6B35);transition:width .3s;box-shadow:0 0 10px #FFD700}
-.search-need{font-size:.72rem;color:#888;margin-top:4px}
-.invest-row{display:flex;gap:8px;margin:8px 0}
-.sponsor-note{font-size:.72rem;color:#FFD700;font-style:italic;margin:6px 0}
-</style>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700;800&display=swap">
+  <link rel="stylesheet" href="css/app.css">
 </head>
-
 <body>
 <canvas id="starfield" aria-hidden="true"></canvas>
-<div class="app">
-  <header class="topbar">
-    <div class="logo">초공간 차원 붕괴<span class="logo-sub">INFINITY</span></div>
-    <div class="res-chips">
-      <div class="chip"><span class="chip-ico">💠</span><div><div class="chip-val" id="matter-top">10</div><div class="chip-label">반물질</div></div></div>
-      <div class="chip"><span class="chip-ico">⭐</span><div><div class="chip-val" id="ip-top">0</div><div class="chip-label">IP</div></div></div>
-      <div class="chip"><span class="chip-ico">🏆</span><div><div class="chip-val" id="ach-top">0</div><div class="chip-label">업적</div></div></div>
+
+<!-- ── 타이틀 화면 ── -->
+<div class="splash" id="splash">
+  <img class="splash-bg" src="img/thumb/hero-bg.webp" alt="">
+  <div class="splash-inner">
+    <div class="splash-kicker">IDLE · INCREMENTAL · SPACE</div>
+    <h1 class="splash-title">초공간<br>차원 붕괴</h1>
+    <div class="splash-sub">I N F I N I T Y</div>
+    <button class="splash-start" id="start-btn">터치하여 시작</button>
+    <div class="splash-hint" id="splash-hint">저장된 우주를 불러오는 중…</div>
+  </div>
+  <div class="splash-ver">v2.0</div>
+</div>
+
+<div class="app" id="app" aria-hidden="true">
+  <!-- ── 상단 HUD ── -->
+  <header class="hud">
+   <div class="hud-row">
+    <div class="brand"><span class="brand-mark">∞</span><span class="brand-name">차원 붕괴</span></div>
+    <div class="hud-res">
+      <div class="res res-am" title="반물질">
+        <span class="res-ico">💠</span>
+        <div class="res-txt"><b id="hud-am">10</b><small id="hud-rate">+0 /초</small></div>
+      </div>
+      <div class="res res-ip" title="인피니티 포인트">
+        <span class="res-ico">⭐</span>
+        <div class="res-txt"><b id="hud-ip">0</b><small>IP</small></div>
+      </div>
     </div>
+    <button class="icon-btn" id="settings-btn" aria-label="설정" data-tab="settings">
+      <svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="17" r="2.2"/></svg>
+    </button>
+   </div>
+   <div class="effects" id="effects"></div>
   </header>
 
-  <div class="layout">
-    <nav class="sidebar" aria-label="게임 메뉴">
-      <button class="tab active" data-tab="dimensions"><span class="tab-ico">◈</span><span class="tab-txt">개요</span></button>
-      <button class="tab" data-tab="tickspeed"><span class="tab-ico">⏱</span><span class="tab-txt">차원</span></button>
-      <button class="tab" data-tab="constellations"><span class="tab-ico">✦</span><span class="tab-txt">성좌</span></button>
-      <button class="tab" data-tab="research">연구</button>
-    <button class="tab" data-tab="challenges"><span class="tab-ico">⚔</span><span class="tab-txt">도전</span></button>
-      <button class="tab" data-tab="infinity"><span class="tab-ico">∞</span><span class="tab-txt">인피니티</span></button>
-      <button class="tab" data-tab="achievements"><span class="tab-ico">🏆</span><span class="tab-txt">업적</span></button>
-      <button class="tab" data-tab="stats"><span class="tab-ico">📊</span><span class="tab-txt">기록</span></button>
-      <button class="tab" data-tab="settings"><span class="tab-ico">⚙</span><span class="tab-txt">설정</span></button>
+  <div class="shell">
+    <!-- ── 내비게이션 (모바일: 하단 / 데스크톱: 좌측) ── -->
+    <nav class="nav" id="nav" aria-label="게임 메뉴">
+      <button class="nav-btn active" data-tab="home">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(-20 12 12)"/></svg>
+        <span>우주</span><i class="badge"></i>
+      </button>
+      <button class="nav-btn" data-tab="stars">
+        <svg viewBox="0 0 24 24"><path d="M4 18l5-7 6 3 5-9"/><circle cx="4" cy="18" r="1.6"/><circle cx="9" cy="11" r="1.6"/><circle cx="15" cy="14" r="1.6"/><circle cx="20" cy="5" r="1.6"/></svg>
+        <span>성좌</span><i class="badge"></i>
+      </button>
+      <button class="nav-btn" data-tab="research">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="1.8"/><ellipse cx="12" cy="12" rx="9.5" ry="3.6"/><ellipse cx="12" cy="12" rx="9.5" ry="3.6" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="9.5" ry="3.6" transform="rotate(-60 12 12)"/></svg>
+        <span>연구</span><i class="badge"></i>
+      </button>
+      <button class="nav-btn" data-tab="infinity">
+        <svg viewBox="0 0 24 24"><path d="M12 12c-2-2.7-3.6-4-5.5-4a4 4 0 0 0 0 8c1.9 0 3.5-1.3 5.5-4zm0 0c2 2.7 3.6 4 5.5 4a4 4 0 0 0 0-8c-1.9 0-3.5 1.3-5.5 4z"/></svg>
+        <span>무한</span><i class="badge"></i>
+      </button>
+      <button class="nav-btn" data-tab="records">
+        <svg viewBox="0 0 24 24"><path d="M8 4h8v5a4 4 0 0 1-8 0V4zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8.5 20h7M10 17h4"/></svg>
+        <span>기록</span><i class="badge"></i>
+      </button>
     </nav>
 
-    <main>
-      <section class="pane active" id="pane-dimensions">
-        <div class="hero">
-          <img class="hero-bg" src="img/blackhole-hero.webp" alt="블랙홀">
-          <div class="hero-inner">
-            <div class="hero-label">총 반물질</div>
-            <div class="hero-matter" id="matter">10.00</div>
-            <div class="hero-rate" id="rate">+0.00 /초</div>
-            <div class="hero-sub" id="infinity-distance">∞까지 약 309자릿수</div>
-            <div class="progress-rail"><div class="progress-fill" id="infinity-progress"></div></div>
+    <main class="content">
+      <!-- ── 우주 (메인) ── -->
+      <section class="pane active" id="pane-home">
+        <div class="hero" id="hero">
+          <img class="hero-bg" src="img/thumb/hero-bg.webp" alt="">
+          <div class="hero-top">
+            <div class="hero-label">반물질</div>
+            <div class="hero-matter" id="matter">10</div>
+            <div class="hero-rate" id="rate">+0 /초</div>
+          </div>
+          <button class="core" id="core-btn" aria-label="블랙홀을 터치해 반물질 수집">
+            <span class="core-glow"></span>
+            <span class="core-ring"></span>
+            <span class="core-img"></span>
+            <span class="core-hint" id="core-hint">TAP!</span>
+          </button>
+          <div class="combo" id="combo" aria-hidden="true"><b id="combo-n">COMBO ×0</b><div class="combo-bar"><i id="combo-fill"></i></div></div>
+          <div class="hero-bottom">
+            <div class="inf-row"><span>∞ 까지</span><span id="inf-pct">0.0%</span></div>
+            <div class="rail"><div class="rail-fill" id="inf-progress"></div></div>
           </div>
         </div>
 
-        <div class="buy-bar">
-          <div class="buy-mode" aria-label="구매 수량">
-            <button class="mode-btn active" data-mode="1">×1</button>
-            <button class="mode-btn" data-mode="10">×10</button>
-            <button class="mode-btn" data-mode="max">MAX</button>
+        <button class="crunch-banner hidden" id="crunch-banner">
+          <span class="cb-ico">☄</span>
+          <span class="cb-txt"><b>빅 크런치 가능!</b><small id="crunch-reward">우주를 붕괴시키고 IP를 획득하세요</small></span>
+          <span class="cb-go">붕괴 ›</span>
+        </button>
+
+        <button class="goal-card" id="goal-card">
+          <span class="goal-ico">🎯</span>
+          <span class="goal-main">
+            <span class="goal-kicker">다음 목표</span>
+            <b class="goal-name" id="goal-name">—</b>
+            <span class="goal-desc" id="goal-desc"></span>
+            <span class="rail sm"><span class="rail-fill" id="goal-fill"></span></span>
+          </span>
+          <span class="goal-reward">보상<b>+5%</b></span>
+        </button>
+
+        <div class="toolbar">
+          <div class="seg" id="buy-mode" role="group" aria-label="구매 수량">
+            <button class="seg-btn active" data-mode="1">×1</button>
+            <button class="seg-btn" data-mode="10">×10</button>
+            <button class="seg-btn" data-mode="max">MAX</button>
           </div>
-          <button class="primary" id="max-all">모든 차원 최대 구매</button>
-          <button class="secondary" id="buff-btn">⚡ 과충전 (보유 10% 소모)</button>
+          <button class="btn btn-gold" id="max-all">전부 구매</button>
+          <button class="btn btn-buff" id="buff-btn">⚡ 과충전</button>
         </div>
 
-        <div class="dim-grid" id="dimension-list"></div>
+        <div class="tick-card" id="tick-card">
+          <div class="tick-ico"><span></span></div>
+          <div class="tick-info">
+            <b>틱스피드 가속기</b>
+            <small id="tick-info">가속 ×1.00</small>
+          </div>
+          <button class="buy-btn" id="buy-tick"><small>가속</small><b id="tick-cost">1K</b></button>
+        </div>
+
+        <div class="dim-list" id="dim-list"></div>
 
         <h3 class="section-title">우주 조작</h3>
-        <div class="action-grid" id="prestige-grid"></div>
+        <div class="prestige-grid" id="prestige-grid"></div>
       </section>
 
-      <section class="pane" id="pane-tickspeed">
-        <div class="page-head"><h2>차원 가속</h2><p>모든 차원 생산 사이클의 시간축을 압축합니다.</p></div>
-        <div class="panel engine">
-          <div>
-            <h3 class="panel-title">국소 시간 가속기</h3>
-            <p class="panel-copy">업그레이드마다 틱 주기가 12% 단축됩니다. 반물질 은하는 감소폭을 더 크게 만듭니다.</p>
-            <div class="metric" id="tick-metric">1,000 ms <small>현재 틱 주기</small></div>
-            <button class="primary" id="buy-tick">틱스피드 가속</button>
-          </div>
-          <div class="engine-visual" aria-hidden="true"><div class="engine-core"></div></div>
-        </div>
+      <!-- ── 성좌 ── -->
+      <section class="pane" id="pane-stars">
+        <div class="page-head"><h2>성좌 후원</h2><p>반물질을 바쳐 사도를 찾고, 성좌의 영구적인 축복을 받으세요. 빅 크런치 후에도 유지됩니다.</p></div>
+        <div class="card-grid two" id="const-grid"></div>
       </section>
 
-      <section class="pane" id="pane-constellations">
-        <div class="page-head"><h2>성좌 후원</h2><p>밤하늘의 성좌가 당신의 우주를 후원합니다. 반물질로 해금하고 성장시키세요.</p></div>
-        <div class="constellation-grid" id="constellation-grid"></div>
-      </section>
-
+      <!-- ── 연구 ── -->
       <section class="pane" id="pane-research">
-      <div class="section-head"><div><h2>차원 연구</h2><p>새로운 법칙을 발견하여 더 높은 생산 효율을 획득합니다.</p></div></div>
-      <div class="research-grid" id="research-grid"></div>
-      <div class="section-head" style="margin-top:20px"><div><h2>은하 컬렉션</h2><p>탄생시킨 은하들의 기록입니다.</p></div><div class="metric"><span id="galaxy-count">0</span><small>개</small></div></div>
-      <div class="galaxy-collection" id="galaxy-collection"></div>
-    </section>
-
-    <section class="pane" id="pane-challenges">
-        <div class="page-head"><h2>디버프 도전</h2><p>스스로 제약을 걸고 더 큰 보상을 노리세요. 도전 중에는 우주가 초기화됩니다.</p></div>
-        <div class="challenge-grid" id="challenge-grid"></div>
+        <div class="page-head"><h2>차원 연구소</h2><p>새로운 법칙을 발견해 생산 효율을 영구적으로 높입니다.</p></div>
+        <div class="card-grid three" id="research-grid"></div>
+        <div class="page-head sub"><h2>은하 컬렉션 <small id="galaxy-count">0</small></h2><p>반물질 은하를 만들 때마다 새로운 은하가 기록됩니다.</p></div>
+        <div class="galaxy-collection" id="galaxy-collection"></div>
       </section>
 
+      <!-- ── 무한 ── -->
       <section class="pane" id="pane-infinity">
-        <div class="page-head"><h2>인피니티 영역</h2><p>빅 크런치 이후에도 유지되는 영구 업그레이드입니다.</p></div>
-        <div class="panel">
-          <h3 class="panel-title">무한 우주 구조</h3>
-          <p class="panel-copy">인피니티 포인트를 소비해 다음 우주의 법칙을 재작성합니다.</p>
-          <div class="metric" style="margin:14px 0 4px"><span id="ip">0</span> <small>IP</small></div>
-          <div class="upgrade-grid" id="upgrade-grid"></div>
+        <div class="ip-banner">
+          <div><div class="ip-label">인피니티 포인트</div><div class="ip-value"><span id="ip-value">0</span><small>IP</small></div></div>
+          <div class="ip-side" id="ip-side">빅 크런치 0회</div>
+        </div>
+        <div class="seg seg-wide" data-subnav="infinity">
+          <button class="seg-btn active" data-sub="upgrades">업그레이드</button>
+          <button class="seg-btn" data-sub="auto">자동화</button>
+          <button class="seg-btn" data-sub="challenges">도전</button>
+        </div>
+        <div class="sub-pane active" data-subpane="upgrades"><div class="card-grid two" id="upgrade-grid"></div></div>
+        <div class="sub-pane" data-subpane="auto"><div class="panel" id="auto-list"></div></div>
+        <div class="sub-pane" data-subpane="challenges">
+          <p class="hint-line" id="challenge-hint">도전은 별도의 우주에서 진행됩니다. 완료하거나 포기하면 원래 우주로 돌아옵니다.</p>
+          <div class="card-grid three" id="challenge-grid"></div>
         </div>
       </section>
 
-      <section class="pane" id="pane-achievements">
-        <div class="page-head"><h2>업적 기록</h2><p>달성한 업적 하나마다 모든 차원 생산량이 5% 증가합니다.</p></div>
-        <div class="panel" style="display:flex;align-items:center;gap:10px">
-          <div class="metric" style="margin:0"><span id="achievement-count">0</span><small> / 30</small></div>
+      <!-- ── 기록 ── -->
+      <section class="pane" id="pane-records">
+        <div class="seg seg-wide" data-subnav="records">
+          <button class="seg-btn active" data-sub="ach">업적</button>
+          <button class="seg-btn" data-sub="stats">통계</button>
         </div>
-        <div class="achievement-grid" id="achievement-grid"></div>
+        <div class="sub-pane active" data-subpane="ach">
+          <div class="ach-summary panel">
+            <div><div class="ip-label">달성한 업적</div><div class="ip-value"><span id="ach-count">0</span><small id="ach-total">/ 0</small></div></div>
+            <div class="ach-bonus">생산 보너스<b id="ach-bonus">×1.00</b></div>
+          </div>
+          <div class="ach-grid" id="ach-grid"></div>
+        </div>
+        <div class="sub-pane" data-subpane="stats">
+          <div class="stats-grid" id="stats-grid"></div>
+          <div class="panel"><h3 class="panel-title">진행 기록</h3><div id="history-list"></div></div>
+        </div>
       </section>
 
-      <section class="pane" id="pane-stats">
-        <div class="page-head"><h2>우주 관측 기록</h2><p>현재 세션과 불러온 세이브의 누적 기록입니다.</p></div>
-        <div class="stats-grid" id="stats-grid"></div>
-        <div class="panel history"><h3 class="panel-title">진행 기록</h3><div id="history-list"></div></div>
-      </section>
-
+      <!-- ── 설정 ── -->
       <section class="pane" id="pane-settings">
-        <div class="page-head"><h2>설정 및 세이브</h2><p>세이브 파일에는 오프라인 진행을 위한 저장 시각이 포함됩니다.</p></div>
-        <div class="settings-grid">
+        <div class="page-head"><h2>설정</h2><p>게임은 10초마다, 그리고 앱을 벗어날 때 자동으로 저장됩니다.</p></div>
+        <div class="card-grid two">
           <div class="panel">
-            <h3 class="panel-title">데이터 관리</h3>
-            <p class="panel-copy">현재 진행을 파일로 내려받거나 이전 세이브를 불러올 수 있습니다.</p>
-            <div class="button-row">
-              <button class="primary" id="export-save">세이브 다운로드</button>
-              <button class="secondary" id="import-save">세이브 불러오기</button>
-              <button class="danger-btn" id="reset-save">진행 초기화</button>
-              <input class="file-input" type="file" id="save-file" accept="application/json,.json">
+            <h3 class="panel-title">게임 환경</h3>
+            <div class="toggle-row"><span>효과음</span><button class="switch" data-setting="sound" role="switch" aria-label="효과음"></button></div>
+            <div class="toggle-row"><span>진동 (지원 기기)</span><button class="switch" data-setting="haptics" role="switch" aria-label="진동"></button></div>
+            <div class="toggle-row"><span>숫자 팝업 · 파티클</span><button class="switch" data-setting="popups" role="switch" aria-label="숫자 팝업"></button></div>
+            <div class="toggle-row"><span>차원 교체·부스트 확인 창</span><button class="switch" data-setting="confirm" role="switch" aria-label="리셋 확인 창"></button></div>
+            <div class="toggle-row col"><span>숫자 표기</span>
+              <div class="seg" id="notation-seg">
+                <button class="seg-btn" data-notation="short">1.2K</button>
+                <button class="seg-btn" data-notation="kr">1.2만</button>
+                <button class="seg-btn" data-notation="sci">1.2e3</button>
+              </div>
             </div>
-            <div class="save-note">게임은 5초마다 자동으로 저장됩니다. 앱을 껐다 켜도 이어서 플레이할 수 있습니다.</div>
           </div>
           <div class="panel">
-            <h3 class="panel-title">게임 피드백</h3>
-            <div class="toggle-row"><span>효과음</span><button class="switch on" id="sound-toggle" role="switch" aria-checked="true" aria-label="효과음"></button></div>
-            <div class="toggle-row"><span>숫자 팝업</span><button class="switch on" id="popup-toggle" role="switch" aria-checked="true" aria-label="숫자 팝업"></button></div>
-            <div class="toggle-row"><span>축약 숫자 표기</span><button class="switch on" id="notation-toggle" role="switch" aria-checked="true" aria-label="축약 숫자 표기"></button></div>
+            <h3 class="panel-title">세이브 데이터</h3>
+            <p class="panel-copy">세이브 코드를 복사해 두면 기기를 바꾸거나 앱을 지워도 이어서 플레이할 수 있습니다.</p>
+            <div class="button-row">
+              <button class="btn btn-gold" id="save-now">지금 저장</button>
+              <button class="btn btn-cyan" id="export-save">세이브 코드 복사</button>
+              <button class="btn btn-cyan" id="import-save">세이브 불러오기</button>
+              <button class="btn btn-ghost" id="download-save">파일로 내려받기</button>
+              <button class="btn btn-danger" id="reset-save">진행 초기화</button>
+            </div>
+            <div class="save-note" id="save-note">마지막 저장: —</div>
           </div>
         </div>
+        <p class="about">초공간 차원 붕괴: 인피니티 · v2.0<br>단축키: 1~8 차원 구매 · M 전부 구매 · T 틱스피드 · B 과충전 · Space 블랙홀</p>
       </section>
     </main>
   </div>
 </div>
 
+<div class="comet-layer" id="comet-layer"></div>
+<div class="fx-layer" id="fx-layer" aria-hidden="true"></div>
+
 <div class="modal-backdrop" id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-  <div class="modal"><h2 id="modal-title">확인</h2><p id="modal-copy"></p><div class="modal-summary" id="modal-summary"></div><div class="modal-actions"><button class="secondary" id="modal-cancel">취소</button><button class="primary" id="modal-confirm">실행</button></div></div>
+  <div class="modal" id="modal-box">
+    <div class="modal-icon" id="modal-icon">✦</div>
+    <h2 id="modal-title">확인</h2>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-actions" id="modal-actions"></div>
+  </div>
 </div>
 <div class="toast-stack" id="toasts" aria-live="polite"></div>
 
-<script>
-
-(function(){
-'use strict';
-class BigNum{
-  constructor(m=0,e=0){if(m instanceof BigNum){this.m=m.m;this.e=m.e}else if(typeof m==='object'&&m&&'m'in m){this.m=Number(m.m)||0;this.e=Number(m.e)||0}else if(typeof m==='string'&&m.toLowerCase().includes('e')){const p=m.toLowerCase().split('e');this.m=Number(p[0]);this.e=Number(p[1])}else{this.m=Number(m)||0;this.e=e||0}this.normalize()}
-  normalize(){if(!isFinite(this.m)){this.m=9.999;this.e=Number.MAX_SAFE_INTEGER;return this}if(this.m<=0||isNaN(this.m)){this.m=0;this.e=0;return this}const s=Math.floor(Math.log10(Math.abs(this.m)));if(s!==0){this.m/=Math.pow(10,s);this.e+=s}return this}
-  gte(o){o=new BigNum(o);return this.e===o.e?this.m>=o.m:this.e>o.e} gt(o){o=new BigNum(o);return this.e===o.e?this.m>o.m:this.e>o.e}
-  add(o){o=new BigNum(o);const d=this.e-o.e;if(d>16)return new BigNum(this);if(d<-16)return new BigNum(o);return new BigNum(this.m+o.m*Math.pow(10,-d),this.e)}
-  sub(o){o=new BigNum(o);const d=this.e-o.e;if(d>16)return new BigNum(this);if(d<-16)return new BigNum(0);const n=this.m-o.m*Math.pow(10,-d);return n<=0?new BigNum(0):new BigNum(n,this.e)}
-  mul(o){o=new BigNum(o);if(!this.m||!o.m)return new BigNum(0);return new BigNum(this.m*o.m,this.e+o.e)} div(o){o=new BigNum(o);return !o.m?new BigNum(0):new BigNum(this.m/o.m,this.e-o.e)}
-  toJSON(){return{m:this.m,e:this.e}}
-}
-const INF=new BigNum(1.79,308), dimsBase=[['제1차원',new BigNum(10),1e3],['제2차원',new BigNum(100),1e4],['제3차원',new BigNum(1,4),1e5],['제4차원',new BigNum(1,6),1e6],['제5차원',new BigNum(1,9),1e8],['제6차원',new BigNum(1,13),1e10],['제7차원',new BigNum(1,18),1e12],['제8차원',new BigNum(1,24),1e15]];
-const upgradeDefs=[['시공간 압축','차원 부스트 배율이 ×2에서 ×2.5로 증가합니다.',1],['은하 가속','은하 1개당 틱스피드 감소폭이 추가됩니다.',1],['무한 생성기','제1차원의 기본 생산량이 영구적으로 100배 증가합니다.',2],['초공간 시너지','보유한 IP 1개당 전체 생산량이 2배씩 증가합니다.',5]];
-const constDefs=[
- ['오리온','사냥꾼의 별','차원 생산량이 레벨당 15% 증가합니다.'],
- ['리라','거문고의 별','틱스피드 효율이 레벨당 8% 증가합니다.'],
- ['카시오페이아','여왕의 별','마스터리 경험치 획득이 레벨당 20% 증가합니다.'],
- ['페가수스','천마의 별','과충전 버프 지속시간이 레벨당 20% 증가합니다.'],
- ['백조','고니의 별','오프라인 생산량이 레벨당 15% 증가합니다.'],
- ['전갈','전사의 별','도전 보상이 레벨당 25% 증가합니다.'],
- ['큰곰','북극성의 별','업적 배율이 레벨당 10% 증가합니다.'],
- ['안드로메다','은하의 별','성좌 레벨업 비용이 레벨당 5% 감소합니다.']
-];
-const challDefs=[
- ['속박된 시간','틱스피드가 절반으로 감소합니다.','1e10 반물질 도달','영구 생산 +10%'],
- ['무거운 차원','차원 구매 비용이 3배가 됩니다.','1e15 반물질 도달','영구 생산 +15%'],
- ['단일 차원','제1차원만 반물질을 생산합니다.','1e8 반물질 도달','영구 생산 +20%']
-];
-const apostleDefs=[
- ['오리온','침묵의 사냥꾼','과묵하고 직설적이다. 말이 짧다.'],
- ['리라','별빛 음유시인','낭만적이고 노래하듯 말한다.'],
- ['카시오페이아','자부심 강한 여왕','고귀하고 당당하게 말한다.'],
- ['페가수스','자유로운 천마','쾌활하고 빠르게 말한다.'],
- ['백조','순백의 감시자','차분하고 조용하게 말한다.'],
- ['전갈','불굴의 전사','호전적이고 힘차게 말한다.'],
- ['큰곰','북극성의 인도자','현명하고 느긋하게 말한다.'],
- ['안드로메다','은하의 공주','신비롭고 몽환적으로 말한다.']
-];
-const skillDefs=[
- ['축복','성좌의 보너스를 강화합니다.'],
- ['수호','오프라인 생산량을 증가시킵니다.'],
- ['계시','주기적으로 우주의 비밀을 발견해 보너스를 가져옵니다.']
-];
-// 대사 템플릿: [상황, 사도별 말투 변형]
-const dialogueTemplates={
- discovery:[
-  '{name}: {place}에서 {item}을(를) 찾아냈다.',
-  '{name}: {place}에 {item}이(가) 있었다. 가져왔다.',
-  '{name}: 우연히 {place}에서 {item}을(를) 발견했다.',
-  '{name}의 계시 — {place}, 그곳에 {item}이(가) 잠들어 있었다.',
-  '{name}: {item}… {place}에서 주웠다.'
- ],
- levelup:[
-  '{name}: 강해졌다. 다음은 더 큰 것을 노린다.',
-  '{name}의 힘이 자라났다. {skill}의 경지가 깊어졌다.',
-  '{name}: 이 정도면 아직 시작이다.',
-  '{name}이(가) 한 단계 올랐다. 눈빛이 달라졌다.',
-  '{name}: 후원이 헛되지 않았다.'
- ],
- greeting:[
-  '{name}: 깨어났다. 명령을 내려라.',
-  '{name}: 별들이 속삭인다. 들리나?',
-  '{name}: 오늘도 우주를 누비겠다.',
-  '{name}이(가) 당신을 주시하고 있다.',
-  '{name}: 준비됐다. 언제든 가겠다.'
- ],
- idle:[
-  '{name}: {place}을(를) 배회 중이다.',
-  '{name}: 잠시 별을 세고 있다.',
-  '{name}은(는) 조용히 우주를 관측하고 있다.',
-  '{name}: {item}에 대해 생각 중이다.',
-  '{name}의 시선이 {place}에 머물러 있다.'
- ]
-};
-const dialogueFillers={
- place:['붉은 성운','고요한 암흑대','뒤틀린 시공간','잊힌 은하단','푸른 초신성 잔해','거대한 블랙홀 주변','성간 먼지 구름','얼어붙은 소행성대','빛의 장벽 너머','심연의 틈새','황금빛 퀘이사','침묵의 보이드','수정 성운','시간의 강가','어둠의 성단'],
- item:['시간의 파편','차원의 씨앗','별의 눈물','공간의 매듭','인피니티 잔향','중력의 심장','빛의 화석','우주의 기억','차원석','성운의 정수','시간의 모래','별가루 결정','공허의 조각','은하의 눈동자','특이점 파편']
-};
-const researchDefs=[
- ['차원 공명','모든 차원 생산 +20%',1,0],
- ['시간 압축','틱스피드 +10%',1,0],
- ['물질 정제','제1차원 생산 +50%',2,0],
- ['은하 씨앗','은하 생성 요구량 -10%',2,1],
- ['초공간 도약','차원 부스트 효과 +25%',3,1],
- ['특이점 이론','빅크런치 IP +1 추가',5,2],
- ['평행 우주','오프라인 생산 +50%',3,2],
- ['차원 융합','마스터리 XP +30%',2,0],
- ['암흑 물질','버프 효과 2배 → 2.5배',4,4],
- ['무한 회로','업적 배율 +50%',3,8],
-];
-const galaxyNames=['NGC-7843','K-91','IN-776','A17-β','ZQ-114','PX-9','HL-203','VX-88','OR-15','TY-42'];
-const eventDefs=[
- ['차원 폭풍','모든 차원 생산 +300%',1800],
- ['시간 왜곡','틱스피드 2배',900],
- ['물질 홍수','반물질 획득 +200%',1200],
-];
-const secretAchDefs=[
- ['첫 과충전','과충전 버프를 1회 사용'],
- ['성좌 관측자','성좌 1개 해금'],
- ['도전자','도전 1개 완료'],
- ['마스터','마스터리 레벨 합계 10 달성'],
- ['끈기','누적 1시간 플레이'],
- ['완벽한 조화','8개 성좌 모두 해금']
-];
-const achDefs=[
- ['첫 진동','제1차원 구매'],['임계 질량','반물질 1,000 도달'],['차원 여행자','차원 교체 1회'],['은하의 지배자','반물질 은하 1개'],['무한 너머','빅 크런치 1회'],['한 묶음','한 차원 10개 구매'],
- ['다중 스펙트럼','제4차원 보유'],['심층 관측','제8차원 개방'],['가속 실험','틱스피드 5회'],['시간 설계자','틱스피드 10회'],['부스트 점화','차원 부스트 1회'],['연쇄 반응','차원 부스트 5회'],
- ['쌍둥이 은하','반물질 은하 2개'],['은하단','반물질 은하 5개'],['초거대 수','반물질 1e50'],['경계 접근','반물질 1e100'],['사건의 지평선','반물질 1e200'],['완전한 붕괴','인피니티 도달'],
- ['영구 흔적','인피니티 업그레이드 1개'],['법칙 재작성','인피니티 업그레이드 4개'],['반복 우주','빅 크런치 2회'],['다중 우주','빅 크런치 5회'],['차원 수집가','차원 총 100개 구매'],['인피니티','24개 업적의 정점']
-];
-const dimDisplay=[['I','물질 차원'],['II','에너지 차원'],['III','중력 차원'],['IV','시간 차원'],['V','공간 차원'],['VI','정보 차원'],['VII','가능성 차원'],['VIII','초월 차원']];
-function fresh(){return{version:2,matter:new BigNum(10),ip:0,shifts:0,boosts:0,galaxies:0,infinities:0,tickspeedCost:new BigNum(1,3),tickspeedPurchased:0,dims:dimsBase.map((d,i)=>({id:i+1,amount:new BigNum(0),bought:0,baseCost:d[1],costMult:d[2]})),infinityUpgrades:upgradeDefs.map((u,i)=>({id:i,name:u[0],desc:u[1],cost:u[2],bought:false})),achievements:Array(24).fill(false),stats:{startedAt:Date.now(),playSeconds:0,totalMatter:new BigNum(10),totalPurchases:0,crunches:0,history:['새 우주 관측 시작']},savedAt:Date.now(),
-mastery:dimsBase.map(()=>({xp:0,level:0})),
-buff:{active:false,endsAt:0,used:false},
-challenges:[false,false,false],activeChallenge:-1,
-secretAch:Array(6).fill(false),
-constellations:constDefs.map(()=>({invested:new BigNum(0),searchProgress:0,apostleFound:false,level:0,sponsorRate:0})),
-apostles:apostleDefs.map(()=>({awake:false,skills:[0,0,0],lastRevelation:0,log:[]})),
-research:Array(10).fill(0),
-galaxyCollection:[],
-activeEvent:null,eventEndsAt:0,nextEventAt:Date.now()+300000}}
-let state=fresh(),buyMode='1',activeTab='dimensions',sound=true,popups=true,compact=true,lastFrame=performance.now(),lastUi=0,pendingAction=null;
-const $=s=>document.querySelector(s),$$=s=>Array.from(document.querySelectorAll(s));
-function esc(v){return String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-function format(n){n=new BigNum(n);if(!n.m)return'0';if(!compact&&n.e<16)return(n.m*Math.pow(10,n.e)).toLocaleString('ko-KR',{maximumFractionDigits:2});if(n.e<3){const v=n.m*Math.pow(10,n.e);return v<10?v.toFixed(2):v<100?v.toFixed(1):Math.floor(v).toLocaleString('ko-KR')}if(n.e<6)return Math.floor(n.m*Math.pow(10,n.e)).toLocaleString('ko-KR');const groups=['','K','M','B','T','Qa','Qi','Sx','Sp','Oc','No'];const g=Math.floor(n.e/3);if(compact&&g<groups.length)return(n.m*Math.pow(10,n.e-g*3)).toFixed(2)+groups[g];return n.m.toFixed(3)+'e'+n.e}
-function log10(n){return n.m?Math.log10(n.m)+n.e:0}
-function unlocked(){return Math.min(8,4+state.shifts)}
-function dimCost(d,offset=0){let c=new BigNum(d.baseCost);const b=d.bought+offset;if(b>0)c=c.mul(new BigNum(d.costMult)).mul(Math.pow(1.15,b));if(state.activeChallenge===1)c=c.mul(3);return c}
-function constMult(idx){const c=state.constellations[idx];return c.unlocked?1+c.level*[.15,.08,.20,.20,.15,.25,.10,-.05][idx]:1}
-function dimMult(d){let m=new BigNum(1).mul(Math.pow(2,Math.floor(d.bought/10)));if(state.boosts)m=m.mul(Math.pow(state.infinityUpgrades[0].bought?2.5:2,state.boosts));if(d.id===1&&state.infinityUpgrades[2].bought)m=m.mul(100);if(state.infinityUpgrades[3].bought)m=m.mul(Math.max(1,state.ip*2));m=m.mul(1+state.achievements.filter(Boolean).length*.05*constMult(6));const mast=state.mastery[d.id-1];if(mast)m=m.mul(1+mast.level*.1);m=m.mul(constMult(0));const challBonus=state.challenges.reduce((a,c,i)=>a+(c?[.1,.15,.2][i]*constMult(5):0),0);if(challBonus)m=m.mul(1+challBonus);if(state.buff.active&&Date.now()<state.buff.endsAt)m=m.mul(2);let blessBonus=0;for(let i=0;i<8;i++)blessBonus+=apostleBonus(i,0);if(blessBonus>0)m=m.mul(1+blessBonus);m=m.mul(researchMult(0));if(d.id===1)m=m.mul(researchMult(2));if(state.activeEvent==='차원 폭풍')m=m.mul(4);if(state.activeEvent==='물질 홍수'&&d.id===1)m=m.mul(3);return m}
-function tickBase(){let b=.88;if(state.galaxies)b=Math.max(.6,b-state.galaxies*(state.infinityUpgrades[1].bought?.03:.02));return b}
-function speedFactor(){let f=Math.pow(1/tickBase(),state.tickspeedPurchased);f*=constMult(1);f*=researchMult(1);f*=eventSpeedMult();if(state.activeChallenge===0)f*=.5;return f}
-function productionRate(){return state.dims[0].amount.mul(dimMult(state.dims[0])).mul(speedFactor())}
-function canBuyCount(d,mode){let temp=new BigNum(state.matter),count=0,target=mode==='max'?10000:Number(mode);while(count<target){const c=dimCost(d,count);if(!temp.gte(c))break;temp=temp.sub(c);count++}return count}
-function buyDimension(id,mode=buyMode,anchor){const d=state.dims[id-1];if(id>unlocked())return;const count=canBuyCount(d,mode);if(!count){toast('반물질이 부족합니다.');shake(anchor);return}let spent=new BigNum(0);for(let i=0;i<count;i++)spent=spent.add(dimCost(d,i));state.matter=state.matter.sub(spent);d.amount=d.amount.add(count);d.bought+=count;state.stats.totalPurchases+=count;chime(170+id*45);if(popups&&anchor)floatText(anchor,'+'+count);pulse($('#matter'));checkAchievements();renderDimensions();renderHud()}
-function buyMaxAll(){let total=0;for(let i=unlocked();i>=1;i--){const d=state.dims[i-1],count=canBuyCount(d,'max');if(count){let spent=new BigNum(0);for(let j=0;j<count;j++)spent=spent.add(dimCost(d,j));state.matter=state.matter.sub(spent);d.amount=d.amount.add(count);d.bought+=count;total+=count}}if(total){state.stats.totalPurchases+=total;toast('<b>'+total+'개</b> 차원을 일괄 구매했습니다.');chime(540);renderAll()}else toast('구매 가능한 차원이 없습니다.')}
-function resetMatterDims(){state.matter=new BigNum(10);state.dims.forEach(d=>{d.amount=new BigNum(0);d.bought=0})}
-function prestige(type){if(type==='shift'){const u=unlocked(),d=state.dims[u-1];if(u>=8||d.bought<20)return toast(u>=8?'8차원이 모두 개방되었습니다.':'요구 수량이 부족합니다.');state.shifts++;resetMatterDims();record('제'+unlocked()+'차원 개방');toast('새로운 차원이 개방되었습니다.');chime(720)}else if(type==='boost'){const d=state.dims[unlocked()-1],req=20+state.boosts*10;if(d.bought<req)return toast('차원 부스트 요구 수량이 부족합니다.');state.boosts++;resetMatterDims();record('차원 부스트 #'+state.boosts);toast('전체 생산 배율이 강화되었습니다.');chime(840)}else if(type==='galaxy'){const d=state.dims[7],req=80+state.galaxies*40;if(state.shifts<4||d.bought<req)return toast('반물질 은하 요구 조건이 부족합니다.');state.galaxies++;const gname=addGalaxyToCollection();state.shifts=0;state.boosts=0;resetMatterDims();record('반물질 은하 #'+state.galaxies+' · '+gname);toast('새 은하 <b>'+gname+'</b> 탄생!');chime(1020)}checkAchievements();renderAll()}
-function openPrestige(type){let title,copy,summary,ok=false;if(type==='shift'){const u=unlocked(),d=state.dims[u-1];title='차원 교체';copy='현재 반물질과 모든 차원을 초기화하고 다음 차원을 개방합니다.';summary='요구: 제'+u+'차원 20개 · 현재 '+d.bought+'개';ok=u<8&&d.bought>=20}else if(type==='boost'){const d=state.dims[unlocked()-1],req=20+state.boosts*10;title='차원 부스트';copy='현재 반물질과 차원을 초기화하고 모든 차원의 생산 배율을 강화합니다.';summary='요구: 제'+unlocked()+'차원 '+req+'개 · 현재 '+d.bought+'개';ok=d.bought>=req}else if(type==='galaxy'){const d=state.dims[7],req=80+state.galaxies*40;title='반물질 은하';copy='차원 교체와 부스트를 초기화하고 틱스피드의 기본 법칙을 강화합니다.';summary='요구: 제8차원 '+req+'개 · 현재 '+d.bought+'개';ok=state.shifts>=4&&d.bought>=req}else{title='빅 크런치';copy='현재 우주를 완전히 붕괴시킵니다. 차원, 교체, 부스트, 은하, 틱스피드는 초기화되고 인피니티 포인트 1점을 획득합니다.';summary='획득: +1 IP · 누적 '+(state.infinities+1)+'회';ok=state.matter.gte(INF)}openModal(title,copy,summary,ok?()=>type==='crunch'?bigCrunch():prestige(type):null)}
-function bigCrunch(){if(!state.matter.gte(INF))return;state.ip++;state.infinities++;state.stats.crunches++;state.matter=new BigNum(10);state.shifts=state.boosts=state.galaxies=state.tickspeedPurchased=0;state.tickspeedCost=new BigNum(1,3);state.dims.forEach(d=>{d.amount=new BigNum(0);d.bought=0});record('빅 크런치 #'+state.infinities);toast('<b>인피니티 포인트 +1</b> · 새로운 우주가 시작됩니다.');chime(1200);checkAchievements();renderAll()}
-function buffDuration(){return 60000*constMult(3)}
-function activateBuff(){if(state.buff.active&&Date.now()<state.buff.endsAt)return toast('이미 과충전 중입니다.');const cost=state.matter.mul(.1);if(cost.m<=0)return toast('반물질이 부족합니다.');state.matter=state.matter.sub(cost);state.buff={active:true,endsAt:Date.now()+buffDuration(),used:true};record('과충전 활성화');toast('<b>과충전!</b> 60초간 생산 2배');chime(1000);checkSecret();renderAll()}
-function checkBuff(){if(state.buff.active&&Date.now()>=state.buff.endsAt){state.buff.active=false;toast('과충전 종료')}}
-function startChallenge(i){if(state.challenges[i])return toast('이미 완료한 도전입니다.');if(state.activeChallenge>=0)return toast('진행 중인 도전을 먼저 포기하세요.');state.activeChallenge=i;resetMatterDims();state.matter=new BigNum(10);record('도전 시작 · '+challDefs[i][0]);toast('<b>'+challDefs[i][0]+'</b> 시작!');renderAll()}
-function giveUpChallenge(){if(state.activeChallenge<0)return;record('도전 포기');state.activeChallenge=-1;resetMatterDims();state.matter=new BigNum(10);toast('도전을 포기했습니다.');renderAll()}
-function completeChallenge(i){state.challenges[i]=true;state.activeChallenge=-1;resetMatterDims();state.matter=new BigNum(10);record('도전 완료 · '+challDefs[i][0]);toast('<b>도전 완료!</b> '+challDefs[i][3]);chime(1200);checkSecret();renderAll()}
-function constSearchNeed(i){return new BigNum(1,7+i*2)}
-function investConst(i,amount){const c=state.constellations[i];if(c.apostleFound&&c.level>=10)return;const invest=BigNum.min(state.matter,amount);if(invest.m<=0)return toast('반물질이 부족합니다.');state.matter=state.matter.sub(invest);c.invested=c.invested.add(invest);
-if(!c.apostleFound){const need=constSearchNeed(i);c.searchProgress=Math.min(100,log10(c.invested)/log10(need)*100);if(c.invested.gte(need)){c.apostleFound=true;awakeApostle(i);record('사도 발견 · '+apostleDefs[i][0]);toast('<b>'+constDefs[i][0]+'</b>이(가) 사도 <b>'+apostleDefs[i][0]+'</b>를 찾았다!');chime(950);checkSecret()}}else{if(c.level<10){const lvlNeed=new BigNum(1,9+i*2).mul(Math.pow(5,c.level));if(c.invested.gte(lvlNeed)){c.level++;c.invested=new BigNum(0);record(constDefs[i][0]+' 후원 Lv.'+c.level);toast('<b>'+constDefs[i][0]+'</b>이 사도를 후원: Lv.'+c.level);chime(980);sponsorApostle(i)}}}
-renderAll()}
-function investConst10(i){investConst(i,state.matter.mul(.1))}
-function investConstAll(i){investConst(i,state.matter)}
-function sponsorApostle(i){const a=state.apostles[i];if(!a.awake)return;const c=state.constellations[i];const skillIdx=Math.floor(Math.random()*3);if(a.skills[skillIdx]<20){a.skills[skillIdx]++;const msg=makeDialogue(i,'levelup');apostleLog(i,'['+constDefs[i][0]+'의 후원] '+msg+' ('+skillDefs[skillIdx][0]+' Lv.'+a.skills[skillIdx]+')')}}
-function constMult(idx){const c=state.constellations[idx];return c.apostleFound?1+c.level*[.15,.08,.20,.20,.15,.25,.10,-.05][idx]:1}
-function secretConditions(){const mTotal=state.mastery.reduce((a,m)=>a+m.level,0);return[state.buff.used,state.constellations.some(c=>c.apostleFound),state.challenges.some(c=>c),mTotal>=10,state.stats.playSeconds>=3600,state.constellations.every(c=>c.apostleFound)]}
-function checkSecret(){const c=secretConditions();let changed=false;c.forEach((v,i)=>{if(v&&!state.secretAch[i]){state.secretAch[i]=true;changed=true;toast('<b>???</b> · '+secretAchDefs[i][0]);chime(700+i*20)}});if(changed&&activeTab==='achievements')renderAchievements()}
-function pick(arr){return arr[Math.floor(Math.random()*arr.length)]}
-function makeDialogue(apostleIdx,situation){const name=apostleDefs[apostleIdx][0];let tpl=pick(dialogueTemplates[situation]);tpl=tpl.replace('{name}',name);tpl=tpl.replace('{place}',pick(dialogueFillers.place));tpl=tpl.replace('{item}',pick(dialogueFillers.item));if(tpl.includes('{skill}'))tpl=tpl.replace('{skill}',pick(skillDefs)[0]);return tpl}
-function apostleLog(i,msg){const a=state.apostles[i];a.log.push(new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})+' '+msg);if(a.log.length>20)a.log.shift()}
-function awakeApostle(i){const a=state.apostles[i];if(a.awake)return;a.awake=true;const msg=makeDialogue(i,'greeting');apostleLog(i,msg);record(apostleDefs[i][0]+' 각성')}
-function skillCost(i,s){const a=state.apostles[i];return new BigNum(1,10+i*2).mul(Math.pow(5,a.skills[s]))}
-function fundSkill(i,s){const a=state.apostles[i];if(!a.awake||a.skills[s]>=20)return;const cost=skillCost(i,s);if(!state.matter.gte(cost))return toast('반물질이 부족합니다.');state.matter=state.matter.sub(cost);a.skills[s]++;const msg=makeDialogue(i,'levelup');apostleLog(i,msg+' ('+skillDefs[s][0]+' Lv.'+a.skills[s]+')');record(apostleDefs[i][0]+' · '+skillDefs[s][0]+' Lv.'+a.skills[s]);toast('<b>'+apostleDefs[i][0]+'</b> '+skillDefs[s][0]+' Lv.'+a.skills[s]);chime(900);renderAll()}
-function apostleBonus(i,s){const a=state.apostles[i];return a.awake?a.skills[s]*.05:0}
-function checkRevelations(){const now=Date.now();for(let i=0;i<8;i++){const a=state.apostles[i];if(!a.awake||a.skills[2]<=0)continue;const interval=Math.max(60000,300000-a.skills[2]*10000);if(now-a.lastRevelation>=interval){a.lastRevelation=now;const bonusMul=1+a.skills[2]*.1;const bonus=state.matter.mul(.01*bonusMul);state.matter=state.matter.add(bonus);state.stats.totalMatter=state.stats.totalMatter.add(bonus);const msg=makeDialogue(i,'discovery');apostleLog(i,msg+' (+'+format(bonus)+' AM)');toast('<b>'+apostleDefs[i][0]+'</b>의 계시: +'+format(bonus)+' AM');chime(1050)}}}
-function researchCost(i){const lvl=state.research[i];return new BigNum(researchDefs[i][2],0).mul(Math.pow(10,lvl*2))}
-function researchMaxLvl(i){return 5}
-function buyResearch(i){if(state.research[i]>=5)return;const cost=researchCost(i);const currency=i>=5?'ip':'matter';if(currency==='ip'){if(state.ip<researchDefs[i][2]+state.research[i]*2)return toast('IP가 부족합니다.');state.ip-=researchDefs[i][2]+state.research[i]*2}else{if(!state.matter.gte(cost))return toast('반물질이 부족합니다.');state.matter=state.matter.sub(cost)}state.research[i]++;record('연구 · '+researchDefs[i][0]+' Lv.'+state.research[i]);toast('<b>'+researchDefs[i][0]+'</b> Lv.'+state.research[i]);chime(920);renderAll()}
-function researchMult(idx){return 1+state.research[idx]*[.2,.1,.5,0,.25,0,.5,.3,0,.5][idx]}
-function addGalaxyToCollection(){const name=galaxyNames[Math.floor(Math.random()*galaxyNames.length)]+'-'+Math.floor(Math.random()*900+100);state.galaxyCollection.push(name);if(state.galaxyCollection.length>50)state.galaxyCollection.shift();return name}
-function checkEvent(){const now=Date.now();if(state.activeEvent&&now>=state.eventEndsAt){state.activeEvent=null;toast('특수 현상 종료');renderAll()}if(!state.activeEvent&&now>=state.nextEventAt){const e=eventDefs[Math.floor(Math.random()*eventDefs.length)];state.activeEvent=e[0];state.eventEndsAt=now+e[2]*1000;state.nextEventAt=now+e[2]*1000+300000+Math.random()*600000;toast('<b>특수 현상!</b> '+e[0]+' — '+e[1]);chime(1100);record('특수 현상 · '+e[0]);renderAll()}}
-function eventMult(){if(!state.activeEvent)return 1;if(state.activeEvent==='차원 폭풍')return 4;if(state.activeEvent==='물질 홍수')return 3;return 1}
-function eventSpeedMult(){if(state.activeEvent==='시간 왜곡')return 2;return 1}
-function buyTick(){if(!state.matter.gte(state.tickspeedCost))return toast('반물질이 부족합니다.');state.matter=state.matter.sub(state.tickspeedCost);state.tickspeedPurchased++;state.tickspeedCost=state.tickspeedCost.mul(10);chime(610);checkAchievements();renderAll()}
-function buyUpgrade(id){const u=state.infinityUpgrades[id];if(u.bought||state.ip<u.cost)return;state.ip-=u.cost;u.bought=true;record('인피니티 업그레이드 · '+u.name);toast('<b>'+u.name+'</b> 활성화');chime(930);checkAchievements();renderAll()}
-function renderHud(){const m=$('#matter'),prev=m.textContent,next=format(state.matter);if(prev!==next){m.textContent=next;if(performance.now()-lastUi>240)pulse(m)}$('#rate').textContent='+'+format(productionRate())+' /초';const p=Math.max(0,Math.min(100,log10(state.matter)/308.252*100));$('#infinity-progress').style.width=p+'%';const remain=Math.max(0,309-Math.floor(log10(state.matter)));$('#infinity-distance').textContent=state.matter.gte(INF)?'빅 크런치 가능':'∞까지 약 '+remain+'자릿수';const mt=$('#matter-top');if(mt)mt.textContent=format(state.matter);const it=$('#ip-top');if(it)it.textContent=state.ip;const at=$('#ach-top');if(at)at.textContent=state.achievements.filter(Boolean).length+state.secretAch.filter(Boolean).length}
-function renderPrestige(){const u=unlocked(),shiftD=state.dims[u-1],boostReq=20+state.boosts*10,galReq=80+state.galaxies*40;const cards=[
- {type:'shift',icon:'⟡',title:'차원 교체',desc:u>=8?'8개 차원이 모두 개방되었습니다.':'초기화 후 '+dimDisplay[u][1]+' 개방',req:u>=8?'완료':'제'+u+'차원 '+shiftD.bought+' / 20',ready:u<8&&shiftD.bought>=20,btn:u>=8?'개방 완료':'교체 실행',next:u>=8?'':'✦ 다음: '+dimDisplay[u][1]+' 개방',cls:''},
- {type:'boost',icon:'⚡',title:'차원 부스트',desc:'모든 차원의 생산 배율을 증폭합니다.',req:'제'+u+'차원 '+state.dims[u-1].bought+' / '+boostReq,ready:state.dims[u-1].bought>=boostReq,btn:'부스트 실행',next:'✦ 다음: 전체 차원 ×'+(state.infinityUpgrades[0].bought?'2.5':'2')+' 배율',cls:''},
- {type:'galaxy',icon:'🌌',title:'반물질 은하',desc:'틱스피드의 기본 가속률을 강화합니다.',req:'제8차원 '+state.dims[7].bought+' / '+galReq,ready:state.shifts>=4&&state.dims[7].bought>=galReq,btn:'은하 생성',next:'✦ 다음: 틱 가속 +'+(state.infinityUpgrades[1].bought?'3':'2')+'%',cls:''},
- {type:'crunch',icon:'☄',title:'빅 크런치',desc:'우주를 붕괴시키고 인피니티 포인트를 획득합니다.',req:state.matter.gte(INF)?'보상 +1 IP':'1.79e308 반물질 필요',ready:state.matter.gte(INF),btn:'인피니티 리셋',next:'✦ 다음: IP '+state.ip+' → '+(state.ip+1),cls:'crunch'}];
- $('#prestige-grid').innerHTML=cards.map(c=>'<article class="act-card '+c.cls+(c.ready?' ready':'')+'"><div class="act-icon">'+c.icon+'</div><div class="act-title">'+c.title+'</div><div class="act-desc">'+c.desc+'</div><div class="act-req">'+c.req+'</div>'+(c.next?'<div class="act-next">'+c.next+'</div>':'')+'<button class="act-btn" data-prestige="'+c.type+'" '+(!c.ready?'disabled':'')+'>'+c.btn+'</button></article>').join('');$$('[data-prestige]').forEach(b=>b.onclick=()=>openPrestige(b.dataset.prestige))}
-function dimGrowthRate(d){if(d.amount.m<=0)return 0;const prod=d.id===1?state.dims[0].amount.mul(dimMult(d)).mul(speedFactor()):state.dims[d.id-1].amount.mul(dimMult(state.dims[d.id-1])).mul(speedFactor()*.1);return prod.div(d.amount).m*Math.pow(10,prod.e)*100}
-function renderDimensions(){const u=unlocked();const buffHtml=state.buff.active&&Date.now()<state.buff.endsAt?'<div class="buff-banner">⚡ 과충전 가동 중 · '+Math.ceil((state.buff.endsAt-Date.now())/1000)+'초</div>':'';
-$('#dimension-list').innerHTML=buffHtml+state.dims.map(d=>{const i=d.id-1,locked=d.id>u,cost=dimCost(d),count=locked?0:canBuyCount(d,buyMode),label=buyMode==='max'?'MAX':'×'+buyMode,mast=state.mastery[i],dd=dimDisplay[i];
-const rate=locked?new BigNum(0):(d.id===1?productionRate():d.amount.mul(dimMult(d)).mul(speedFactor()*.1));
-const progress=locked?0:Math.min(100,(d.bought%10)*10);
-return '<article class="dim-card'+(locked?' locked':'')+'"><div class="dim-art"><img loading="lazy" src="img/dim'+d.id+'.webp" alt="'+dd[1]+'"><span class="dim-roman">'+dd[0]+'</span>'+(locked?'<span class="dim-lock">🔒</span>':'')+'</div><div class="dim-body"><div class="dim-name">'+dd[1]+'</div>'+(!locked&&mast&&mast.level>0?'<div class="dim-mastery">마스터리 Lv.'+mast.level+'</div>':'')+'<div class="dim-rate">'+(locked?'???':'+'+format(rate)+'/초')+'</div><div class="dim-lv">Lv. '+d.bought+'</div><div class="dim-progress"><div class="dim-progress-fill" style="width:'+progress+'%"></div></div><button class="dim-buy-btn" data-buy="'+d.id+'" '+((!count||locked)?'disabled':'')+'>'+(locked?'잠김':label+' · '+format(cost)+' AM')+'</button></div></article>'}).join('');$$('[data-buy]').forEach(b=>b.onclick=()=>buyDimension(Number(b.dataset.buy),buyMode,b))}
-function renderTicks(){const ms=Math.max(1,Math.floor(1000/ speedFactor()));$('#tick-metric').innerHTML=ms.toLocaleString('ko-KR')+' ms <small>현재 틱 주기 · '+state.tickspeedPurchased+'회</small>';const b=$('#buy-tick');b.textContent='가속 업그레이드 · '+format(state.tickspeedCost)+' AM';b.disabled=!state.matter.gte(state.tickspeedCost)}
-function renderInfinity(){$('#ip').textContent=state.ip;$('#upgrade-grid').innerHTML=state.infinityUpgrades.map(u=>'<article class="upgrade '+(u.bought?'bought':'')+'"><h3>'+u.name+'</h3><p>'+u.desc+'</p><button class="secondary" data-upgrade="'+u.id+'" '+(u.bought||state.ip<u.cost?'disabled':'')+'>'+(u.bought?'활성화됨':u.cost+' IP')+'</button></article>').join('');$$('[data-upgrade]').forEach(b=>b.onclick=()=>buyUpgrade(Number(b.dataset.upgrade)))}
-function achievementConditions(){const totalBought=state.dims.reduce((a,d)=>a+d.bought,0),maxBought=Math.max(...state.dims.map(d=>d.bought)),ups=state.infinityUpgrades.filter(u=>u.bought).length;return[totalBought>=1,state.matter.gte(1000),state.shifts>=1,state.galaxies>=1,state.infinities>=1,maxBought>=10,state.dims[3].amount.gt(0),unlocked()>=8,state.tickspeedPurchased>=5,state.tickspeedPurchased>=10,state.boosts>=1,state.boosts>=5,state.galaxies>=2,state.galaxies>=5,state.matter.gte(new BigNum(1,50)),state.matter.gte(new BigNum(1,100)),state.matter.gte(new BigNum(1,200)),state.matter.gte(INF),ups>=1,ups>=4,state.infinities>=2,state.infinities>=5,state.stats.totalPurchases>=100,state.achievements.slice(0,23).every(Boolean)]}
-function checkAchievements(){const c=achievementConditions();let changed=false;c.forEach((v,i)=>{if(v&&!state.achievements[i]){state.achievements[i]=true;changed=true;toast('<b>업적 달성</b> · '+achDefs[i][0]);chime(760+i*8)}});if(changed&&activeTab==='achievements')renderAchievements()}
-function renderConstellations(){$('#constellation-grid').innerHTML=constDefs.map((c,i)=>{let apostleHtml='';const s=state.constellations[i],ap=state.apostles[i];const need=s.apostleFound?new BigNum(1,9+i*2).mul(Math.pow(5,s.level)):constSearchNeed(i);
-if(ap.awake){apostleHtml='<div class="apostle-box"><div class="apostle-head">✦ '+apostleDefs[i][0]+' <small>'+apostleDefs[i][1]+'</small></div><div class="apostle-personality">'+apostleDefs[i][2]+'</div><div class="skill-list">'+skillDefs.map((sk,j)=>'<div class="skill-row"><span>'+sk[0]+' Lv.'+ap.skills[j]+'</span><span class="skill-desc">'+sk[1]+'</span><button class="secondary small" data-fund="'+i+':'+j+'" '+(ap.skills[j]>=20||!state.matter.gte(skillCost(i,j))?'disabled':'')+'>'+(ap.skills[j]>=20?'MAX':format(skillCost(i,j))+' AM')+'</button></div>').join('')+'</div>'+(ap.log.length?'<div class="apostle-log">'+ap.log.slice(-5).reverse().map(l=>'<div class="log-row">'+esc(l)+'</div>').join('')+'</div>':'')+'</div>'}
-const statusHtml=!s.apostleFound?'<div class="search-status"><div class="search-label">사도 탐색 중... '+s.searchProgress.toFixed(1)+'%</div><div class="search-bar"><div class="search-fill" style="width:'+s.searchProgress+'%"></div></div><div class="search-need">필요: '+format(need)+' AM</div></div>':'<div class="const-level">후원 Lv.'+s.level+' / 10</div>'+(s.level<10?'<div class="search-need">다음 후원: '+format(need)+' AM</div>':'<div class="search-need">MAX</div>');
-if(ap.awake){apostleHtml='<div class="apostle-box"><div class="apostle-head">✦ '+apostleDefs[i][0]+' <small>'+apostleDefs[i][1]+'</small></div><div class="apostle-personality">'+apostleDefs[i][2]+'</div><div class="skill-list">'+skillDefs.map((sk,j)=>'<div class="skill-row"><span>'+sk[0]+' Lv.'+ap.skills[j]+'</span><span class="skill-desc">'+sk[1]+'</span></div>').join('')+'</div><div class="sponsor-note">'+c[0]+'이(가) 후원 중</div>'+(ap.log.length?'<div class="apostle-log">'+ap.log.slice(-5).reverse().map(l=>'<div class="log-row">'+esc(l)+'</div>').join('')+'</div>':'')+'</div>'}
-return '<article class="const-card '+(s.apostleFound?'unlocked':'')+'"><div class="const-name">'+c[0]+'</div><div class="const-title">'+c[1]+'</div><div class="const-desc">'+c[2]+'</div>'+statusHtml+'<div class="invest-row"><button class="secondary small" data-invest10="'+i+'">10% 투자</button><button class="primary small" data-investall="'+i+'">전부 투자</button></div>'+apostleHtml+'</article>'}).join('');
-$$('[data-invest10]').forEach(b=>b.onclick=()=>investConst10(Number(b.dataset.invest10)));
-$$('[data-investall]').forEach(b=>b.onclick=()=>investConstAll(Number(b.dataset.investall)))}
-function renderResearch(){$('#research-grid').innerHTML=researchDefs.map((r,i)=>{const lvl=state.research[i],maxed=lvl>=5,cost=lvl>=5?null:(i>=5?researchDefs[i][2]+lvl*2+' IP':format(researchCost(i))+' AM'),canAfford=lvl>=5?false:(i>=5?state.ip>=researchDefs[i][2]+lvl*2:state.matter.gte(researchCost(i)));
-return '<article class="research-card '+(maxed?'maxed':'')+'"><div class="research-name">'+r[0]+'</div><div class="research-desc">'+r[1]+'</div><div class="research-level">Lv.'+lvl+' / 5</div><div class="research-bar"><div class="research-fill" style="width:'+(lvl*20)+'%"></div></div><button class="secondary small" data-research="'+i+'" '+(maxed||!canAfford?'disabled':'')+'>'+(maxed?'MAX':cost)+'</button></article>'}).join('');
-$$('[data-research]').forEach(b=>b.onclick=()=>buyResearch(Number(b.dataset.research)));
-$('#galaxy-count').textContent=state.galaxyCollection.length;
-$('#galaxy-collection').innerHTML=state.galaxyCollection.length?state.galaxyCollection.map(g=>'<div class="galaxy-chip">🌌 '+g+'</div>').join(''):'<div class="empty-msg">아직 탄생시킨 은하가 없습니다.</div>'}
-function renderChallenges(){$('#challenge-grid').innerHTML=challDefs.map((c,i)=>{const done=state.challenges[i],active=state.activeChallenge===i;
-return '<article class="chall-card '+(done?'done':active?'active':'')+'"><div class="chall-name">'+c[0]+'</div><div class="chall-debuff">⚠ '+c[1]+'</div><div class="chall-goal">목표: '+c[2]+'</div><div class="chall-reward">보상: '+c[3]+'</div>'+(done?'<div class="chall-status">✓ 완료</div>':active?'<button class="secondary" id="giveup-btn">포기하기</button>':'<button class="primary" data-chall="'+i+'">도전 시작</button>')+'</article>'}).join('');
-$$('[data-chall]').forEach(b=>b.onclick=()=>startChallenge(Number(b.dataset.chall)));const g=$('#giveup-btn');if(g)g.onclick=giveUpChallenge}
-function renderAchievements(){const normalCount=state.achievements.filter(Boolean).length,secretCount=state.secretAch.filter(Boolean).length;$('#achievement-count').textContent=normalCount+secretCount;$('#achievement-count').nextElementSibling.textContent=' / '+(achDefs.length+secretAchDefs.length);
-const normalHtml=achDefs.map((a,i)=>'<article class="achievement '+(state.achievements[i]?'unlocked':'locked')+'" title="'+a[1]+'"><div class="ach-code">R'+String(Math.floor(i/6)+1)+' · '+String(i+1).padStart(2,'0')+'</div><div class="ach-mark">'+(state.achievements[i]?'✓':'·')+'</div><div class="ach-name">'+a[0]+'</div></article>').join('');
-const secretHtml='<div class="secret-divider">??? 미지의 기록 ???</div>'+secretAchDefs.map((a,i)=>'<article class="achievement secret '+(state.secretAch[i]?'unlocked':'locked')+'" title="'+(state.secretAch[i]?a[1]:'???')+'"><div class="ach-code">???</div><div class="ach-mark">'+(state.secretAch[i]?'✓':'?')+'</div><div class="ach-name">'+(state.secretAch[i]?a[0]:'???')+'</div></article>').join('');
-$('#achievement-grid').innerHTML=normalHtml+secretHtml}
-function formatTime(sec){sec=Math.floor(sec);const d=Math.floor(sec/86400),h=Math.floor(sec%86400/3600),m=Math.floor(sec%3600/60),s=sec%60;return d?d+'일 '+h+'시간':h?h+'시간 '+m+'분':m?m+'분 '+s+'초':s+'초'}
-function renderStats(){const stats=[['총 플레이 시간',formatTime(state.stats.playSeconds)],['누적 반물질',format(state.stats.totalMatter)],['총 차원 구매',state.stats.totalPurchases.toLocaleString('ko-KR')],['빅 크런치',state.infinities.toLocaleString('ko-KR')],['차원 교체',state.shifts.toLocaleString('ko-KR')],['차원 부스트',state.boosts.toLocaleString('ko-KR')],['반물질 은하',state.galaxies.toLocaleString('ko-KR')],['생산 가속','×'+format(new BigNum(speedFactor()))]];$('#stats-grid').innerHTML=stats.map(s=>'<article class="stat-card"><div class="stat-label">'+esc(s[0])+'</div><div class="stat-value">'+esc(s[1])+'</div></article>').join('');$('#history-list').innerHTML=(state.stats.history||[]).slice(-8).reverse().map((h,i)=>'<div class="history-row"><span>'+esc(h)+'</span><span>'+esc(('#'+(state.stats.history.length-i)).padStart(3,'0'))+'</span></div>').join('')||'<div class="history-row"><span>기록 없음</span><span>—</span></div>'}
-function renderAll(){renderHud();renderPrestige();renderDimensions();renderTicks();renderInfinity();renderAchievements();renderStats();if(activeTab==='constellations')renderConstellations();if(activeTab==='challenges')renderChallenges();if(activeTab==='research')renderResearch();lastUi=performance.now()}
-function produce(dt,track=true){const factor=speedFactor();dt*=factor;const u=unlocked(),singleMode=state.activeChallenge===2;
-for(let i=u;i>=2;i--){if(singleMode)continue;const higher=state.dims[i-1],lower=state.dims[i-2];lower.amount=lower.amount.add(higher.amount.mul(dimMult(higher)).mul(dt*.1))}
-const gain=state.dims[0].amount.mul(dimMult(state.dims[0])).mul(dt);state.matter=state.matter.add(gain);
-if(track){state.stats.totalMatter=state.stats.totalMatter.add(gain);
-const cm=constMult(2);for(let i=0;i<u;i++){const m=state.mastery[i];if(!m)continue;const xpGain=gain.m>0?Math.log10(gain.m+1)*dt*cm*.5:0;m.xp+=xpGain;const need=(m.level+1)*100;if(m.xp>=need){m.xp-=need;m.level++;toast('<b>제'+(i+1)+'차원 마스터리 Lv.'+m.level+'</b> · 생산 +10%');chime(880);checkSecret()}}}
-if(state.activeChallenge>=0){const goals=[new BigNum(1,10),new BigNum(1,15),new BigNum(1,8)];if(state.matter.gte(goals[state.activeChallenge])){completeChallenge(state.activeChallenge)}}
-return gain}
-function offlineProduce(seconds){const t=seconds*speedFactor(),u=unlocked(),original=state.dims.map(d=>new BigNum(d.amount)),mult=state.dims.map(d=>dimMult(d));for(let i=0;i<u;i++){let add=new BigNum(0);for(let j=i+1;j<u;j++){let coeff=1;for(let k=i+1;k<=j;k++)coeff*=.1;coeff*=Math.pow(t,j-i)/factorial(j-i);let chain=new BigNum(1);for(let k=i+1;k<=j;k++)chain=chain.mul(mult[k]);add=add.add(original[j].mul(chain).mul(coeff))}state.dims[i].amount=state.dims[i].amount.add(add)}let gain=new BigNum(0);for(let j=0;j<u;j++){let coeff=Math.pow(t,j+1)/factorial(j+1);for(let k=1;k<=j;k++)coeff*=.1;let chain=mult[0];for(let k=1;k<=j;k++)chain=chain.mul(mult[k]);gain=gain.add(original[j].mul(chain).mul(coeff))}state.matter=state.matter.add(gain);state.stats.totalMatter=state.stats.totalMatter.add(gain);return gain}
-function factorial(n){let x=1;for(let i=2;i<=n;i++)x*=i;return x}
-function loop(now){const realDt=Math.min(.25,(now-lastFrame)/1000);lastFrame=now;state.stats.playSeconds+=realDt;checkBuff();produce(realDt);if(Math.floor(now/1000)%5===0){checkRevelations();checkEvent()}if(now-lastUi>120){renderHud();if(activeTab==='dimensions'&&now-lastUi>480){renderPrestige();renderDimensions()}if(activeTab==='tickspeed')renderTicks();if(activeTab==='stats'&&now-lastUi>1000)renderStats();lastUi=now}if(Math.floor(state.stats.playSeconds)%2===0)checkAchievements();requestAnimationFrame(loop)}
-function switchTab(name){activeTab=name;$$('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));$$('.pane').forEach(p=>p.classList.toggle('active',p.id==='pane-'+name));if(name==='stats')renderStats();if(name==='achievements')renderAchievements();if(name==='constellations')renderConstellations();if(name==='challenges')renderChallenges();if(name==='research')renderResearch();window.scrollTo({top:0,behavior:'smooth'})}
-function toast(html){const n=document.createElement('div');n.className='toast';n.innerHTML=html;$('#toasts').appendChild(n);setTimeout(()=>{n.style.opacity='0';n.style.transform='translateY(8px)';setTimeout(()=>n.remove(),220)},2600)}
-function floatText(anchor,text){const r=anchor.getBoundingClientRect(),n=document.createElement('div');n.className='float-num';n.textContent=text;n.style.left=(r.left+r.width/2-12)+'px';n.style.top=(r.top-4)+'px';document.body.appendChild(n);setTimeout(()=>n.remove(),900)}
-function pulse(el){if(!el)return;el.classList.remove('pulse');void el.offsetWidth;el.classList.add('pulse')}
-function shake(el){if(!el)return;el.animate([{transform:'translateX(0)'},{transform:'translateX(-3px)'},{transform:'translateX(3px)'},{transform:'translateX(0)'}],{duration:180})}
-let audioCtx=null;function chime(freq){if(!sound)return;try{audioCtx=audioCtx||new(window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==='suspended')audioCtx.resume();const o=audioCtx.createOscillator(),g=audioCtx.createGain(),now=audioCtx.currentTime;o.type='sine';o.frequency.setValueAtTime(freq,now);o.frequency.exponentialRampToValueAtTime(freq*1.18,now+.12);g.gain.setValueAtTime(.045,now);g.gain.exponentialRampToValueAtTime(.001,now+.18);o.connect(g);g.connect(audioCtx.destination);o.start();o.stop(now+.18)}catch(e){}}
-function record(s){state.stats.history=state.stats.history||[];state.stats.history.push(s);if(state.stats.history.length>40)state.stats.history.shift()}
-function openModal(title,copy,summary,action){$('#modal-title').textContent=title;$('#modal-copy').textContent=copy;$('#modal-summary').textContent=summary;pendingAction=action;$('#modal-confirm').disabled=!action;$('#modal-confirm').textContent=action?'실행':'조건 미달';$('#modal').classList.add('open');$('#modal-cancel').focus()}
-function closeModal(){$('#modal').classList.remove('open');pendingAction=null}
-function serialize(){state.savedAt=Date.now();return JSON.stringify(state,null,2)}
-const SAVE_KEY='cosmic-dimensions-autosave-v1';
-function saveToStorage(){try{localStorage.setItem(SAVE_KEY,serialize())}catch(e){}}
-function loadFromStorage(){try{const raw=localStorage.getItem(SAVE_KEY);if(!raw)return false;const data=JSON.parse(raw);if(!data||!data.dims)return false;state=revive(data);const elapsed=Math.max(0,(Date.now()-(Number(data.savedAt)||Date.now()))/1000);if(elapsed>60){const gain=offlineProduce(elapsed);setTimeout(()=>{toast('오프라인 진행: +'+format(gain)+' AM');record('오프라인 진행 +'+format(gain)+' AM')},800)}return true}catch(e){return false}}
-function exportSave(){const blob=new Blob([serialize()],{type:'application/json'}),a=document.createElement('a'),d=new Date();a.href=URL.createObjectURL(blob);a.download='cosmic-dimensions-'+d.toISOString().slice(0,10)+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000);toast('세이브 파일을 내려받았습니다.')}
-function revive(raw){const s=fresh(),num=(v,min=0,max=1e9)=>Math.min(max,Math.max(min,Number.isFinite(Number(v))?Number(v):min)),whole=(v,min=0,max=1e9)=>Math.floor(num(v,min,max));s.matter=new BigNum(raw.matter);s.ip=whole(raw.ip);s.shifts=whole(raw.shifts,0,4);s.boosts=whole(raw.boosts);s.galaxies=whole(raw.galaxies);s.infinities=whole(raw.infinities);s.tickspeedPurchased=whole(raw.tickspeedPurchased,0,10000);s.tickspeedCost=new BigNum(raw.tickspeedCost||new BigNum(1,3));s.dims=s.dims.map((b,i)=>{const d=raw.dims&&typeof raw.dims[i]==='object'?raw.dims[i]:{};b.amount=new BigNum(d.amount);b.bought=whole(d.bought,0,1000000);return b});s.infinityUpgrades=s.infinityUpgrades.map((b,i)=>{const src=raw.infinityUpgrades&&typeof raw.infinityUpgrades[i]==='object'?raw.infinityUpgrades[i]:{};b.bought=src.bought===true;return b});s.achievements=Array.from({length:24},(_,i)=>raw.achievements&&raw.achievements[i]===true);const rs=raw.stats&&typeof raw.stats==='object'?raw.stats:{};s.stats.playSeconds=num(rs.playSeconds,0,1e12);s.stats.totalMatter=new BigNum(rs.totalMatter||10);s.stats.totalPurchases=whole(rs.totalPurchases,0,1e12);s.stats.crunches=whole(rs.crunches,0,1e9);s.stats.history=Array.isArray(rs.history)?rs.history.slice(-40).filter(x=>typeof x==='string').map(x=>x.slice(0,120)):[];s.savedAt=num(raw.savedAt,0,Date.now());
-s.mastery=dimsBase.map((_,i)=>{const m=raw.mastery&&raw.mastery[i]||{};return{xp:num(m.xp,0,1e18),level:whole(m.level,0,100)}});
-s.buff=raw.buff&&typeof raw.buff==='object'?{active:false,endsAt:0,used:raw.buff.used===true}:{active:false,endsAt:0,used:false};
-s.challenges=Array.from({length:3},(_,i)=>raw.challenges&&raw.challenges[i]===true);
-s.activeChallenge=-1;
-s.secretAch=Array.from({length:6},(_,i)=>raw.secretAch&&raw.secretAch[i]===true);
-s.constellations=constDefs.map((_,i)=>{const c=raw.constellations&&raw.constellations[i]||{};return{invested:new BigNum(c.invested),searchProgress:num(c.searchProgress,0,100),apostleFound:c.apostleFound===true,level:whole(c.level,0,10),sponsorRate:num(c.sponsorRate,0,100)}});
-s.apostles=apostleDefs.map((_,i)=>{const a=raw.apostles&&raw.apostles[i]||{};return{awake:a.awake===true,skills:Array.from({length:3},(_,j)=>whole(a.skills&&a.skills[j],0,20)),lastRevelation:num(a.lastRevelation,0,Date.now()),log:Array.isArray(a.log)?a.log.slice(-20).filter(x=>typeof x==='string'):[]}});
-s.research=Array.from({length:10},(_,i)=>whole(raw.research&&raw.research[i],0,5));
-s.galaxyCollection=Array.isArray(raw.galaxyCollection)?raw.galaxyCollection.filter(x=>typeof x==='string').slice(0,50):[];
-s.activeEvent=null;s.eventEndsAt=0;s.nextEventAt=num(raw.nextEventAt,0,Date.now()+300000);
-return s}
-function importFile(file){const reader=new FileReader();reader.onload=()=>{try{const raw=JSON.parse(reader.result);if(!raw||!raw.dims)throw new Error('invalid');state=revive(raw);const elapsed=Math.max(0,(Date.now()-(Number(raw.savedAt)||Date.now()))/1000);let gain=new BigNum(0);if(elapsed>1)gain=offlineProduce(elapsed);state.savedAt=Date.now();record('세이브 불러오기');renderAll();toast('세이브를 불러왔습니다.');if(elapsed>1)openModal('오프라인 진행','저장된 우주가 비활성 시간 동안 생산을 계속했습니다.','경과 '+formatTime(elapsed)+' · 획득 +'+format(gain)+' AM',()=>{})}catch(e){toast('올바른 세이브 파일이 아닙니다.')}};reader.readAsText(file)}
-function resetGame(){state=fresh();closeModal();renderAll();toast('새 우주가 시작되었습니다.')}
-function setupCanvas(){const c=$('#starfield'),x=c.getContext('2d'),reduced=matchMedia('(prefers-reduced-motion:reduce)').matches;if(reduced)return;let w,h,stars=[];function resize(){const d=Math.min(devicePixelRatio||1,2);w=innerWidth;h=innerHeight;c.width=w*d;c.height=h*d;c.style.width=w+'px';c.style.height=h+'px';x.setTransform(d,0,0,d,0,0);stars=Array.from({length:Math.min(110,Math.floor(w*h/9000))},()=>({x:Math.random()*w,y:Math.random()*h,r:Math.random()*1.15+.25,a:Math.random()*.55+.12,s:Math.random()*.06+.015}))}function draw(){x.clearRect(0,0,w,h);for(const s of stars){s.y+=s.s;if(s.y>h){s.y=0;s.x=Math.random()*w}x.fillStyle='rgba(111,220,245,'+s.a+')';x.beginPath();x.arc(s.x,s.y,s.r,0,Math.PI*2);x.fill()}requestAnimationFrame(draw)}addEventListener('resize',resize,{passive:true});resize();draw()}
-$$('.tab').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab));$$('.mode-btn').forEach(b=>b.onclick=()=>{buyMode=b.dataset.mode;$$('.mode-btn').forEach(x=>x.classList.toggle('active',x===b));renderDimensions()});$('#max-all').onclick=buyMaxAll;$('#buff-btn').onclick=activateBuff;$('#buy-tick').onclick=buyTick;$('#export-save').onclick=exportSave;$('#import-save').onclick=()=>$('#save-file').click();$('#save-file').onchange=e=>{if(e.target.files[0])importFile(e.target.files[0]);e.target.value=''};$('#reset-save').onclick=()=>openModal('진행 초기화','현재 우주의 모든 진행을 삭제하고 처음부터 시작합니다. 이 작업은 되돌릴 수 없습니다.','반물질 10으로 재시작',resetGame);$('#modal-cancel').onclick=closeModal;$('#modal-confirm').onclick=()=>{const a=pendingAction;closeModal();if(a)a()};$('#modal').onclick=e=>{if(e.target===$('#modal'))closeModal()};
-function toggle(btn,key){btn.classList.toggle('on');btn.setAttribute('aria-checked',btn.classList.contains('on'));if(key==='sound')sound=btn.classList.contains('on');if(key==='popups')popups=btn.classList.contains('on');if(key==='notation'){compact=btn.classList.contains('on');renderAll()}}
-$('#sound-toggle').onclick=e=>toggle(e.currentTarget,'sound');$('#popup-toggle').onclick=e=>toggle(e.currentTarget,'popups');$('#notation-toggle').onclick=e=>toggle(e.currentTarget,'notation');
-addEventListener('keydown',e=>{if(e.key>='1'&&e.key<='8'&&!e.metaKey&&!e.ctrlKey)buyDimension(Number(e.key),buyMode);else if(e.code==='KeyM'&&!e.metaKey&&!e.ctrlKey)buyMaxAll();else if(e.key==='Escape')closeModal()});
-if(loadFromStorage()){renderAll();setTimeout(()=>toast('저장된 게임을 불러왔습니다.'),500)}setupCanvas();renderAll();requestAnimationFrame(loop);setInterval(saveToStorage,5000);addEventListener('visibilitychange',()=>{if(document.hidden)saveToStorage()});addEventListener('beforeunload',saveToStorage);toast('차원 네트워크가 안정화되었습니다.');
-})();
-
-</script>
+<script src="js/bignum.js"></script>
+<script src="js/data.js"></script>
+<script src="js/core.js"></script>
+<script src="js/ui.js"></script>
 </body>
 </html>
