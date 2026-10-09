@@ -109,7 +109,7 @@
   function toast(html, icon = '✦', tone = '') {
     const stack = $('#toasts');
     while (stack.children.length >= 4) stack.firstChild.remove();
-    const n = h('div', 'toast ' + tone, '<span class="toast-ico">' + icon + '</span><span>' + html + '</span>');
+    const n = h('div', 'toast ' + tone, '<span class="toast-ico">' + icon + '</span><span>' + window.CD.saga.fixJosa(html) + '</span>');
     stack.appendChild(n);
     setTimeout(() => { n.classList.add('out'); setTimeout(() => n.remove(), 260); }, 2800);
   }

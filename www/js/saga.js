@@ -12,13 +12,27 @@
   const core = () => CD.core;
 
   const TICK = 15;                // 서사 한 걸음 (초)
-  const MOMENTUM = 120;
+  const MOMENTUM = 80;
   const P_BASE = 0.0001, P_MAX = 0.7, P_MID = 110, P_W = 8, CHECK_EVERY = 4;
   const MAX_FREE = 10, MAX_FEED = 140, MAX_HALL = 30, MAX_FALLEN = 3;
   const rnd = () => core().random();
   const pick = arr => arr[Math.floor(rnd() * arr.length)];
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const cname = i => SD.voices[i].name;
+
+  // '이(가)' 같은 겸용 조사를 앞 글자의 받침에 맞춰 고른다 (따옴표·태그·괄호는 건너뛴다)
+  const BATCHIM_DIGIT = { 0: 1, 1: 1, 2: 0, 3: 1, 4: 0, 5: 0, 6: 1, 7: 1, 8: 1, 9: 0 };
+  function hasBatchim(ch) {
+    const c = ch.charCodeAt(0);
+    if (c >= 0xAC00 && c <= 0xD7A3) return (c - 0xAC00) % 28 !== 0;
+    if (ch >= '0' && ch <= '9') return !!BATCHIM_DIGIT[ch];
+    return false;
+  }
+  const PAIRS = { '이(가)': ['이', '가'], '을(를)': ['을', '를'], '은(는)': ['은', '는'], '와(과)': ['과', '와'], '과(와)': ['과', '와'], '(으)로': ['으로', '로'] };
+  function fixJosa(text) {
+    return String(text).replace(/([가-힣0-9])((?:<\/?b>|['」』)\]])*)(이\(가\)|을\(를\)|은\(는\)|와\(과\)|과\(와\))/g,
+      (m, ch, mid, p) => ch + mid + PAIRS[p][hasBatchim(ch) ? 0 : 1]);
+  }
 
   /* ───────────── 상태 ───────────── */
 
@@ -38,6 +52,7 @@
 
   function feed(s, kind, text, c = -1, now = Date.now(), extra) {
     const f = s.saga.feed;
+    text = fixJosa(text);
     f.push(Object.assign({ t: now, kind, text, c }, extra || {}));
     if (f.length > MAX_FEED) f.splice(0, f.length - MAX_FEED);
     core().emitSaga(kind, { text, c, ...extra });
@@ -182,7 +197,7 @@
     if (win) {
       p.xp += 8 + mLvl * 5; p.deeds++;
       p.act = { kind: 'win', t: now, monster: m.id, region, dmg };
-      if (rnd() < 0.18) feed(s, 'battle', p.name + '이(가) ' + reg.name + '에서 ' + m.name + '(Lv.' + mLvl + ')을(를) 쓰러뜨렸습니다.', p.patron, now, { a: p.id });
+      if (rnd() < 0.18) feed(s, 'battle', p.name + '이(가) ' + reg.name + '에서 Lv.' + mLvl + ' ' + m.name + '을(를) 쓰러뜨렸습니다.', p.patron, now, { a: p.id });
     } else {
       p.act = { kind: 'lose', t: now, monster: m.id, region, dmg };
       feed(s, 'battle', p.name + '이(가) ' + reg.name + '에서 ' + m.name + '에게 밀려 큰 부상을 입었습니다.', p.patron, now, { a: p.id });
@@ -265,6 +280,19 @@
 
   /* ───────────── 전조와 운명 사건 ───────────── */
 
+  // 이름 받침에 맞춰 조사를 고른다 (카엘이 / 루나가)
+  const JOSA = { 이: ['이', '가'], 가: ['이', '가'], 은: ['은', '는'], 는: ['은', '는'], 을: ['을', '를'], 를: ['을', '를'], 과: ['과', '와'], 와: ['과', '와'] };
+  function josa(word, p) {
+    const c = word.charCodeAt(word.length - 1), pair = JOSA[p];
+    if (!pair) return p;
+    return c >= 0xAC00 && c <= 0xD7A3 && (c - 0xAC00) % 28 !== 0 ? pair[0] : pair[1];
+  }
+  /** {A}·{F} 자리에 이름을 넣는다. 앞에 '사도'·'타락한' 수식어가 없으면 prefix를 붙인다. */
+  function fillName(text, key, name, prefix) {
+    const re = new RegExp('(사도\\s*|타락한\\s*(?:사도\\s*|자\\s*)?)?\\{' + key + '\\}(이|가|은|는|을|를|과|와)?', 'g');
+    return text.replace(re, (m, pre, p) => (pre || prefix) + name + (p ? josa(name, p) : ''));
+  }
+
   // 긴장도가 낮을 땐 거의 0.01%에 머물다가, 전조가 충분히 쌓이면 가파르게 70%까지 치솟는다
   const logistic = t => 1 / (1 + Math.exp(-(t - P_MID) / P_W));
   const L0 = logistic(0);
@@ -310,9 +338,9 @@
     if (text.includes('{A}')) {
       const cand = o.need === 'corrupt' ? livingApostles(s).filter(p => p.corrupt >= 30) : livingApostles(s);
       target = pick(cand);
-      text = text.replace('{A}', '사도 ' + target.name);
+      text = fillName(text, 'A', target.name, '사도 ');
     }
-    if (text.includes('{F}')) text = text.replace('{F}', pick(fallen(s)).name);
+    if (text.includes('{F}')) text = fillName(text, 'F', pick(fallen(s)).name, '타락한 ');
     if (target && o.fx) {
       if (o.fx.corrupt) target.corrupt += o.fx.corrupt * traitOf(target).corrupt;
       if (o.fx.loyalty) target.loyal = clamp(target.loyal + o.fx.loyalty, 0, 100);
@@ -510,7 +538,7 @@
     for (let i = 0; i < 8; i++) if (awake(s, i) && !apostleOf(s, i) && rnd() < 0.35) choose(s, i, now);
     for (const p of livingApostles(s)) act(s, p, now);
     for (const p of fallen(s)) { p.xp += 10; levelUp(s, p, now); }
-    for (const id in s.saga.tension) s.saga.tension[id] *= 0.996;
+    for (const id in s.saga.tension) s.saga.tension[id] *= 0.995;
     for (let i = 0; i < 8; i++) s.saga.fame[i] *= 0.999;
     s.saga.ticks = (s.saga.ticks || 0) + 1;
     return s.saga.ticks % CHECK_EVERY === 0 ? checkFates(s, now) : null;
@@ -522,7 +550,7 @@
     const g = s.saga;
     g.acc += dt;
     while (g.acc >= TICK) { g.acc -= TICK; step(s, now); }
-    if (now >= g.omenAt) { omen(s, now); g.omenAt = now + (25 + rnd() * 35) * 1000; }
+    if (now >= g.omenAt) { omen(s, now); g.omenAt = now + (20 + rnd() * 25) * 1000; }
   }
 
   /** 자리를 비운 동안: 최대 2시간 분량의 사건만 재생하고 요약을 돌려준다 */
@@ -535,7 +563,7 @@
     for (let k = 0; k < steps; k++) {
       const t = start + k * TICK * 1000;
       step(s, t);
-      if (k % 3 === 1) omen(s, t);
+      if (k % 2 === 1) omen(s, t);
     }
     s.saga.omenAt = now + 20000;
     const idx = startFeed ? s.saga.feed.indexOf(startFeed) : -1;
@@ -602,7 +630,7 @@
   }
 
   CD.saga = {
-    TICK, prob, influence, priceMult, takeFraction, fresh, revive, update, step, offline, prodMult, offer, omen, resolve, checkFates, fateReady, xpNeed, power,
+    TICK, prob, fillName, fixJosa, influence, priceMult, takeFraction, fresh, revive, update, step, offline, prodMult, offer, omen, resolve, checkFates, fateReady, xpNeed, power,
     apostleOf, livingApostles, fallen, free, label, spawn, choose, ensureWorld
   };
   if (typeof module === 'object' && module.exports) module.exports = CD.saga;

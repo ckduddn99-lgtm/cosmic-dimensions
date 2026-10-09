@@ -133,3 +133,12 @@ test('사도가 있으면 생산 보너스가 붙는다', () => {
   assert.ok(a > b, a + ' > ' + b);
   assert.equal(base, 0);
 });
+
+test('한국어 조사: 이름 받침에 맞춰 이/가·을/를·과/와를 고른다', () => {
+  assert.equal(saga.fixJosa("성좌 '오리온'이(가) 카엘을(를) 골랐다"), "성좌 '오리온'이 카엘을 골랐다");
+  assert.equal(saga.fixJosa('루나이(가) 세린와(과) 떠났다'), '루나가 세린과 떠났다');
+  assert.equal(saga.fixJosa('Lv.15 망령을(를)'), 'Lv.15 망령을');
+  assert.equal(saga.fillName('사도 {A}가 웃었다', 'A', '카엘', '사도 '), '사도 카엘이 웃었다');
+  assert.equal(saga.fillName('{A}의 눈빛', 'A', '루나', '사도 '), '사도 루나의 눈빛');
+  assert.equal(saga.fillName('타락한 자 {F}가 왔다', 'F', '로아', '타락한 '), '타락한 자 로아가 왔다');
+});
