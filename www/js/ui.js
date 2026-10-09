@@ -937,8 +937,8 @@
     ]);
     const need = C.constNeed(S, i);
     if (!need) {
-      setText($('#sanct-prog-a'), '후원 완료'); setText($('#sanct-prog-b'), 'MAX'); width($('#sanct-fill'), 100);
-      setDisabled($('#inv10'), true); setDisabled($('#invneed'), true); setText($('#invneed'), '최대 레벨');
+      setText($('#sanct-prog-a'), '최대 레벨 · 공물은 성력으로 쌓입니다'); setText($('#sanct-prog-b'), 'MAX'); width($('#sanct-fill'), 100);
+      setDisabled($('#inv10'), S.matter.isZero()); setDisabled($('#invneed'), true); setText($('#invneed'), '최대 레벨');
     } else {
       const rem = C.constRemaining(S, i);
       setText($('#sanct-prog-a'), awake ? '다음 후원 Lv.' + (c.level + 1) : '성좌 각성까지');

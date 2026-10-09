@@ -465,8 +465,10 @@
     if (a.log.length > 20) a.log.shift();
   }
 
+  // 최대 레벨 이후에도 공물은 받는다: 레벨은 오르지 않고 성좌의 성력(사도 후원 재원)으로만 쌓인다
   function invest(s, i, amount, now = Date.now()) {
-    if (!constNeed(s, i)) return { ok: false, reason: 'max' };
+    const max = !constNeed(s, i);
+    if (max && !(saga() && s.saga)) return { ok: false, reason: 'max' };
     amount = BigNum.min(s.matter, amount);
     if (amount.isZero()) return { ok: false, reason: 'poor' };
     s.matter = s.matter.sub(amount);
@@ -476,7 +478,7 @@
       s.saga.tension.crown_war += 1.5; s.saga.tension.star_war += 1;
     }
     absorb(s, i, amount, now);
-    return { ok: true };
+    return { ok: true, max };
   }
 
   /** 성좌가 받은 반물질로 각성·후원 레벨을 올린다 (플레이어 공물이든 사건 중 강탈이든) */

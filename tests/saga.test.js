@@ -102,6 +102,21 @@ test('잠든 성좌는 영향력 0, 사건·강탈·전조에 엮이지 않는�
   assert.ok(s.saga.feed.filter(e => e.kind === 'take').every(e => e.c === 0));
 });
 
+test('최대 레벨 성좌에게도 공물을 바칠 수 있고, 성력으로만 쌓인다', () => {
+  const s = world(1);
+  s.matter = new BigNum(1, 300);
+  core.invest(s, 0, new BigNum(1, 200), NOW);
+  assert.equal(s.constellations[0].level, 10);
+  s.matter = new BigNum(4, 250);
+  const power = new BigNum(s.saga.power[0]), matter = new BigNum(s.matter), inv = new BigNum(s.constellations[0].invested);
+  const r = core.invest(s, 0, new BigNum(1, 250), NOW);
+  assert.ok(r.ok && r.max);
+  assert.equal(s.constellations[0].level, 10);
+  assert.ok(s.saga.power[0].gt(power), '성력 증가');
+  assert.ok(s.matter.lt(matter), '반물질 차감');
+  assert.equal(s.constellations[0].invested.cmp(inv), 0, '레벨 진행치는 그대로');
+});
+
 test('운명 사건: 엮인 성좌가 많고 영향력이 클수록 많이 가져간다', () => {
   assert.ok(saga.takeFraction(1, 0.1) < saga.takeFraction(3, 0.3));
   assert.ok(saga.takeFraction(3, 0.2) < saga.takeFraction(3, 0.6));
