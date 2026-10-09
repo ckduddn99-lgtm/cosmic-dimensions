@@ -13,6 +13,7 @@
 
   const TICK = 15;                // 서사 한 걸음 (초)
   const MOMENTUM = 80;
+  const COOLDOWN = 60;            // 사건 직후 긴장도를 −60으로 내려 같은 사건이 바로 반복되지 않게 한다
   const P_BASE = 0.0001, P_MAX = 0.7, P_MID = 110, P_W = 8, CHECK_EVERY = 4;
   const MAX_FREE = 10, MAX_FEED = 140, MAX_HALL = 30, MAX_FALLEN = 3;
   const rnd = () => core().random();
@@ -317,6 +318,26 @@
     return true;
   }
 
+  // 문장에 등장하는 성좌가 모두 깨어 있어야 그 문장을 쓸 수 있다 (잠든 성좌가 말하거나 움직이지 않게)
+  const NAME_RE = ['오리온', '(?<![가-힣])리라', '카시오페이아', '페가수스', '백조', '전갈', '큰곰', '안드로메다'].map(n => new RegExp(n));
+  const textNeedCache = new Map();
+  function textNeeds(text) {
+    let r = textNeedCache.get(text);
+    if (!r) {
+      const set = new Set();
+      NAME_RE.forEach((re, i) => { if (re.test(text)) set.add(i); });
+      if (/사대성좌|네 성좌/.test(text)) [0, 2, 4, 6].forEach(i => set.add(i));
+      const min = /성좌들|모든 성좌|다른 성좌|성좌 하나/.test(text) ? 2 : 0;
+      r = { set: [...set], min };
+      textNeedCache.set(text, r);
+    }
+    return r;
+  }
+  function textOk(s, text) {
+    const r = textNeeds(text);
+    return r.set.every(i => awake(s, i)) && s.constellations.filter(c => c.apostleFound).length >= r.min;
+  }
+
   function omenReady(s, o) {
     if (o.c >= 0 && !awake(s, o.c)) return false;
     // 단계형 빌드업: 앞 단계 전조로 긴장도가 충분히 쌓여야 다음 단계 전조가 등장한다
@@ -325,8 +346,10 @@
     if (o.need === 'two' && livingApostles(s).length < 2) return false;
     if (o.need === 'corrupt' && !livingApostles(s).some(p => p.corrupt >= 30)) return false;
     if (o.need === 'fallen' && !fallen(s).length) return false;
-    // 아직 일어날 수 없는 사건(엮인 성좌가 잠들어 있음)의 전조는 나오지 않는다
-    return Object.keys(o.add).some(id => { const f = FATE[id]; return f && fateReady(s, f); });
+    // 이 전조가 주로 쌓는 사건이 아직 일어날 수 없으면(엮인 성좌가 잠듦) 나오지 않는다
+    const main = FATE[Object.keys(o.add).sort((a, b) => o.add[b] - o.add[a])[0]];
+    if (!main || !fateReady(s, main)) return false;
+    return textOk(s, o.text);
   }
 
   function omen(s, now) {
@@ -334,7 +357,7 @@
     if (!list.length) return;
     // 빌드업: 이미 긴장이 쌓인 사건의 전조일수록 더 자주 일어난다 (눈덩이처럼 굴러간다)
     const T = s.saga.tension;
-    const weight = o => (o.big ? 0.22 : 1) * (1 + Object.keys(o.add).reduce((a, id) => a + o.add[id] * (T[id] || 0), 0) / MOMENTUM);
+    const weight = o => (o.big ? 0.22 : 1) * (1 + Object.keys(o.add).reduce((a, id) => a + o.add[id] * Math.max(0, T[id] || 0), 0) / MOMENTUM);
     let total = 0;
     for (const o of list) total += weight(o);
     let r = rnd() * total, o = list[0];
@@ -375,8 +398,9 @@
     st.fates++;
     st.seen[f.id] = (st.seen[f.id] || 0) + 1;
     const before = s.saga.tension[f.id];
-    s.saga.tension[f.id] = 0;
-    feed(s, 'fate', '【운명 사건】 ' + f.name + ' — ' + pick(f.story), -1, now, { fate: f.id, big: true, inv, p: prob(before) });
+    // 막 일어난 사건은 한동안 잠잠하다: 긴장도를 0보다 아래로 내려 다시 쌓는 데 시간이 걸리게 한다
+    s.saga.tension[f.id] = -COOLDOWN;
+    feed(s, 'fate', '【운명 사건】 ' + f.name + ' — ' + pick(f.story.filter(t => textOk(s, t)).length ? f.story.filter(t => textOk(s, t)) : f.story), -1, now, { fate: f.id, big: true, inv, p: prob(before) });
 
     // 엮인 성좌가 많을수록, 그 성좌들의 영향력이 클수록 많이 가져간다 (최대 60%)
     const inf = influence(s), infSum = inv.reduce((a, i) => a + inf[i], 0);
@@ -615,7 +639,7 @@
     g.people.forEach(p => { if (p.status === 'apostle' && g.patrons[p.patron] !== p.id) { p.status = 'free'; p.patron = -1; } });
     g.fame = g.fame.map((_, i) => num(Array.isArray(raw.fame) ? raw.fame[i] : 0, -50, 500));
     g.power = g.power.map((_, i) => { try { return new BigNum(Array.isArray(raw.power) ? raw.power[i] : 0); } catch (e) { return new BigNum(0); } });
-    if (raw.tension && typeof raw.tension === 'object') for (const f of SD.fates) g.tension[f.id] = num(raw.tension[f.id], 0, 1e6);
+    if (raw.tension && typeof raw.tension === 'object') for (const f of SD.fates) g.tension[f.id] = num(raw.tension[f.id], -COOLDOWN, 1e6);
     g.feed = (Array.isArray(raw.feed) ? raw.feed : []).slice(-MAX_FEED).map(f => f && typeof f.text === 'string' ? {
       t: num(f.t, 0, now), kind: str(f.kind, 12) || 'info', text: f.text.slice(0, 200), c: Math.floor(num(f.c, -1, 7)), big: f.big === true,
       fate: SD.fates.some(x => x.id === f.fate) ? f.fate : undefined, a: f.a !== undefined ? Math.floor(num(f.a, 0, 1e9)) : undefined

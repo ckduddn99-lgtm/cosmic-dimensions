@@ -68,7 +68,14 @@ test('잠든 성좌는 영향력 0, 사건·강탈·전조에 엮이지 않는�
   assert.equal(saga.fateReady(s, F('scorpion_hunt')), false, '전갈·백조가 잠든 사냥은 일어나지 않음');
   assert.equal(saga.fateReady(s, F('star_war')), false, '성좌 4명 미만이면 성간 전쟁 없음');
   for (let k = 0; k < 300; k++) saga.omen(s, NOW + k);
-  for (const e of s.saga.feed.filter(e => e.kind === 'omen' || e.kind === 'omen-big' || e.kind === 'voice')) assert.ok(e.c <= 0, e.text);
+  saga.choose(s, 0, NOW);
+  for (let k = 0; k < 2000; k++) saga.omen(s, NOW + k);
+  const omens = s.saga.feed.filter(e => e.kind === 'omen' || e.kind === 'omen-big' || e.kind === 'voice');
+  assert.ok(omens.length > 100);
+  for (const e of omens) {
+    assert.ok(e.c <= 0, e.text);
+    assert.ok(!/리라|카시오페이아|페가수스|백조|전갈|큰곰|안드로메다|사대성좌|네 성좌|성좌들|다른 성좌/.test(e.text), '잠든 성좌가 등장: ' + e.text);
+  }
   // 모든 성좌가 엮이는 사건이라도 깨어난 성좌만 가져간다
   const out = saga.resolve(s, Object.assign({}, F('eclipse'), { effects: [] }), NOW);
   assert.deepEqual(out.inv, [0]);

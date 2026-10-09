@@ -115,7 +115,8 @@
       { id: 'gladiator_purge', icon: '⚔️', name: '투기장의 단죄', involve: [5, 4], desc: '전갈의 피비린내 나는 투기장에 백조의 엄정한 심판이 내려앉으려 합니다.', story: ['성좌 \'전갈\'의 잔혹한 경기장에 백조의 서릿발 같은 날개가 드리웁니다.', '피로 물든 투기장의 열기 속에서 사도들이 살아남기 위한 혈투를 벌입니다.'], effects: [{ type: 'arena' }, { type: 'purify', amount: 35 }] },
       { id: 'siren_song_of_stars', icon: '🎶', name: '별들의 세레나데', involve: [1, 7, 3], desc: '리라가 심연 속 안드로메다를 위로하는 노래를 부르며 페가수스를 이끌고 있습니다.', story: ['별들의 하모니가 사슬의 차가움을 녹이며 두 사도의 영혼을 하나로 엮습니다.', '성좌 \'리라\'와 \'페가수스\'가 축복을 뿌리는 가운데 서약의 반지가 빛납니다.'], effects: [{ type: 'wed' }, { type: 'buff', mult: 4, minutes: 15 }] },
       { id: 'great_conjunction_trial', icon: '⚖️', name: '사대성좌의 심문', involve: [0, 2, 4, 6], desc: '질서를 세우려는 네 성좌가 모여 모든 사도들의 그릇을 시험하려 합니다.', story: ['오리온, 카시오페이아, 백조, 큰곰의 권능이 교차하며 엄숙한 법정이 열립니다.', '네 성좌의 날카로운 시선 아래 시험을 통과한 자에게 무한의 지혜가 주어집니다.'], effects: [{ type: 'trial', power: 1 }, { type: 'ip', amount: 1 }] },
-      { id: 'dimension_shatter_climax', icon: '🌌', name: '초공간 차원 대격변', involve: 'all', minInvolved: 5, desc: '모든 성좌의 시선이 한자리에 꽂히며 차원의 경계벽이 무너지려 합니다.', story: ['깨어난 모든 성좌들의 파동이 한곳으로 소용돌이치며 차원문이 완전히 개방됩니다.', '초공간의 법칙이 붕괴하며 차원의 틈새에서 막대한 양의 반물질이 쏟아져 나옵니다.'], effects: [{ type: 'buff', mult: 8, minutes: 20 }, { type: 'matter', minutes: 30 }] }
+      { id: 'dimension_shatter_climax', icon: '🌌', name: '초공간 차원 대격변', involve: 'all', minInvolved: 5, desc: '모든 성좌의 시선이 한자리에 꽂히며 차원의 경계벽이 무너지려 합니다.', story: ['깨어난 모든 성좌들의 파동이 한곳으로 소용돌이치며 차원문이 완전히 개방됩니다.', '초공간의 법칙이 붕괴하며 차원의 틈새에서 막대한 양의 반물질이 쏟아져 나옵니다.'], effects: [{ type: 'buff', mult: 8, minutes: 20 }, { type: 'matter', minutes: 30 }] },
+      { id: 'orion_great_hunt', icon: '🏹', name: '오리온의 대사냥', involve: [0], desc: '사냥꾼 오리온이 사도를 데리고 하늘 끝의 거대한 짐승을 쫓으려 합니다.', story: ['성좌 \'오리온\'이 활시위를 당기자 은하수를 가르는 사냥 나팔이 울립니다.', '거대한 별짐승이 쓰러지며 그 몸에서 빛나는 조각들이 우주로 흩어집니다.'], effects: [{ type: 'bless' }, { type: 'matter', minutes: 15 }, { type: 'buff', mult: 2, minutes: 10 }] }
     ],
 
     /* 전조: 작은 사건(+3~8)과 큰 사건(+15~30)이 운명 사건의 긴장도를 쌓는다.
@@ -373,7 +374,25 @@
       { c: 0, text: '오리온의 화살촉이 달빛을 받아 서늘하게 번뜩입니다.', add: { chariot_clash: 7 } },
       { c: 5, text: '전갈의 독주머니가 부풀어 오르며 검은 연기를 피워 올립니다.', add: { hunter_and_venom: 8 } },
       { c: 2, text: '여왕의 거울 속에 낯선 성좌의 눈동자가 비쳤다 사라집니다.', add: { mirror_of_vanity: 8 } },
-      { c: 7, text: '심연의 파도가 안드로메다의 발목을 차갑게 적십니다.', add: { abyssal_monster_awakens: 7 } }
+      { c: 7, text: '심연의 파도가 안드로메다의 발목을 차갑게 적십니다.', add: { abyssal_monster_awakens: 7 } },
+
+      // 오리온의 대사냥 — 오리온 혼자 깨어 있을 때도 굴러가는 빌드업 (작은 흔적 → 추적 → 포위 → 결전 직전)
+      { c: 0, text: '오리온의 성역에서 사냥개들이 낮게 으르렁거립니다.', add: { orion_great_hunt: 5 } },
+      { c: 0, text: '하늘 끝 성운에 거대한 발자국이 찍혔습니다.', add: { orion_great_hunt: 6 } },
+      { c: 0, text: '오리온이 허리띠의 세 별을 하나씩 닦아 냅니다.', add: { orion_great_hunt: 4 } },
+      { c: 0, text: '부러진 별똥별 뿔 하나가 오리온의 발치에 떨어졌습니다.', add: { orion_great_hunt: 6 } },
+      { c: 0, text: '먼 은하에서 정체 모를 짐승의 울음이 메아리칩니다.', add: { orion_great_hunt: 7 } },
+      { c: 0, text: '사도 {A}가 사냥터 가장자리에서 낯선 털 뭉치를 주웠습니다.', add: { orion_great_hunt: 7 }, need: 'apostle', fx: { xp: 20 } },
+      { c: 0, text: '사도 {A}가 오리온에게서 활 쏘는 법을 배웁니다.', add: { orion_great_hunt: 6 }, need: 'apostle', fx: { xp: 30, loyalty: 5 } },
+      { c: 0, text: '오리온이 짐승의 흔적을 따라 성좌도 위에 붉은 선을 긋습니다.', add: { orion_great_hunt: 9 }, min: { orion_great_hunt: 20 } },
+      { c: 0, text: '짐승이 지나간 자리마다 별빛이 얼어붙어 있습니다.', add: { orion_great_hunt: 8 }, min: { orion_great_hunt: 20 } },
+      { c: 0, text: '사도 {A}가 밤새 짐승의 발자국을 쫓다 상처를 입었습니다.', add: { orion_great_hunt: 10 }, need: 'apostle', min: { orion_great_hunt: 25 }, fx: { hp: -20, xp: 40 } },
+      { c: 0, text: '사냥개들이 목줄을 끊을 듯 한 방향만을 향해 짖어댑니다.', add: { orion_great_hunt: 10 }, min: { orion_great_hunt: 35 } },
+      { c: 0, text: '오리온이 가장 오래된 화살을 화살통에서 꺼냈습니다.', add: { orion_great_hunt: 11 }, min: { orion_great_hunt: 45 } },
+      { c: 0, text: '거대한 별짐승의 그림자가 오리온의 성역을 한 바퀴 돌았습니다.', add: { orion_great_hunt: 22 }, min: { orion_great_hunt: 40 }, big: true },
+      { c: 0, text: '사냥 나팔이 걸린 벽에서 저절로 낮은 소리가 새어 나옵니다.', add: { orion_great_hunt: 12 }, min: { orion_great_hunt: 60 } },
+      { c: 0, text: '사도 {A}가 오리온과 나란히 서서 활시위를 고릅니다.', add: { orion_great_hunt: 14 }, need: 'apostle', min: { orion_great_hunt: 70 }, fx: { loyalty: 10 } },
+      { c: 0, text: '오리온이 일어섰습니다. 하늘 끝 사냥터의 문이 열리기 직전입니다.', add: { orion_great_hunt: 28 }, min: { orion_great_hunt: 80 }, big: true }
     ]
   };
 

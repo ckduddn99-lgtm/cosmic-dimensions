@@ -1251,7 +1251,7 @@
 
   function sagaAwayHTML(g) {
     if (!g || !(g.fates || g.deaths || g.falls || g.betrayals || g.highlights.length)) return '';
-    return '<div class="modal-box"><h4>그동안 성좌들 사이에서는…</h4>운명 사건 ' + g.fates + '회 · 사도의 죽음 ' + g.deaths + ' · 배신 ' + g.betrayals + ' · 타락 ' + g.falls +
+    return '<div class="modal-box"><h4>' + (S.constellations.filter(c => c.apostleFound).length > 1 ? '그동안 성좌들 사이에서는…' : '그동안 성좌의 세계에서는…') + '</h4>운명 사건 ' + g.fates + '회 · 사도의 죽음 ' + g.deaths + ' · 배신 ' + g.betrayals + ' · 타락 ' + g.falls +
       (g.highlights.length ? '<br><br>' + g.highlights.map(t => '· ' + esc(t)).join('<br>') : '') + '</div>';
   }
 
