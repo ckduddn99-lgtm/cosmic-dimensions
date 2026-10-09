@@ -384,7 +384,7 @@
         const share = taken.mul(inf[i] / infSum);
         offer(s, i, share, now);
         core().absorb(s, i, share, now);
-        feed(s, 'take', '성좌 \'' + cname(i) + '\'(영향력 ' + (inf[i] * 100).toFixed(1) + '%)이(가) 당신의 우주에서 반물질 ' + core().fmtShort(share) + '을(를) 가져갔습니다.', i, now, { fate: f.id });
+        feed(s, 'take', '성좌 \'' + cname(i) + '\'(영향력 ' + (inf[i] * 100).toFixed(1) + '%)이(가) 당신의 우주에서 반물질을 ' + core().fmtShort(share) + '만큼 가져갔습니다.', i, now, { fate: f.id });
       });
     }
     inv.forEach(i => addFame(s, i, 3));

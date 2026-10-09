@@ -56,6 +56,12 @@
     }
     return v.m.toFixed(2) + 'e' + e;
   }
+  // 사가 기록은 숫자를 저장 시점 표기(1.31e9, 12,345)로 굳혀 둔다 → 보여줄 때 현재 표기법으로 다시 쓴다.
+  function nums(text) {
+    return String(text)
+      .replace(/(\d+(?:\.\d+)?)e(\d+)/g, (m, a, b) => fmt(new BigNum(+a, +b)))
+      .replace(/\d{1,3}(?:,\d{3})+(?![\d.])/g, m => fmt(+m.replace(/,/g, '')));
+  }
   const fmtInt = n => Math.floor(n).toLocaleString('ko-KR');
   const fmtX = n => (n >= 1000 ? fmt(n) : n.toFixed(2));
   function fmtTime(sec) {
@@ -813,10 +819,10 @@
   const hhmm = t => new Date(t).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
   const FEED_CLS = { fate: 'big', 'fate-fx': 'sys', death: 'bad', fall: 'bad', betray: 'bad', take: 'take', omen: 'omen', 'omen-big': 'omen big', voice: 'omen', pick: 'sys', sponsor: 'sys', save: 'sys', level: 'sys', battle: '' };
   function feedHTML(list) {
-    return list.map(f => '<div class="feed-row ' + (FEED_CLS[f.kind] || '') + (f.big && f.kind !== 'omen-big' ? ' big' : '') + '"><time>' + hhmm(f.t) + '</time><span>' + esc(f.text) + '</span></div>').join('') || '<div class="empty-ap">아직 아무 일도 일어나지 않았습니다.</div>';
+    return list.map(f => '<div class="feed-row ' + (FEED_CLS[f.kind] || '') + (f.big && f.kind !== 'omen-big' ? ' big' : '') + '"><time>' + hhmm(f.t) + '</time><span>' + esc(nums(f.text)) + '</span></div>').join('') || '<div class="empty-ap">아직 아무 일도 일어나지 않았습니다.</div>';
   }
   function renderFeed(el, list) {
-    const last = list[list.length - 1], sig = list.length + ':' + (last ? last.t + last.text : '');
+    const last = list[list.length - 1], sig = settings.notation + ':' + list.length + ':' + (last ? last.t + last.text : '');
     if (el._sig === sig) return;
     el._sig = sig;
     el.innerHTML = feedHTML(list.slice().reverse());
@@ -1021,11 +1027,11 @@
     if (p.kind === 'fateDone') return onFateDone(p);
     if (!started) return;
     if (p.c === selConst && tab === 'stars' && subTab.stars === 'sanct' && p.text && !['battle', 'take'].includes(p.kind)) {
-      showBubble(p.kind === 'voice' ? p.text.replace(/^성좌 '[^']+'(이|가)\s*/, '') : p.text, ['death', 'fall', 'betray'].includes(p.kind) ? 'angry' : ['pick', 'level', 'sponsor', 'save'].includes(p.kind) ? 'cheer' : null);
+      showBubble(nums(p.kind === 'voice' ? p.text.replace(/^성좌 '[^']+'(이|가)\s*/, '') : p.text), ['death', 'fall', 'betray'].includes(p.kind) ? 'angry' : ['pick', 'level', 'sponsor', 'save'].includes(p.kind) ? 'cheer' : null);
     }
     const icon = { death: '🪦', fall: '😈', betray: '🗡', pick: '✨' }[p.kind];
-    if (icon) { toast(esc(p.text), icon, p.kind === 'pick' ? 'gold' : 'red'); if (p.kind !== 'pick') sfx.error(); else sfx.achieve(); }
-    else if (p.kind === 'omen-big') toast('<b>큰 전조</b> · ' + esc(p.text), '🔮', 'violet');
+    if (icon) { toast(esc(nums(p.text)), icon, p.kind === 'pick' ? 'gold' : 'red'); if (p.kind !== 'pick') sfx.error(); else sfx.achieve(); }
+    else if (p.kind === 'omen-big') toast('<b>큰 전조</b> · ' + esc(nums(p.text)), '🔮', 'violet');
   }
   function onFateDone(o) {
     if (!started) return;
@@ -1035,9 +1041,9 @@
     if (tab === 'stars') {
       modal({
         icon: f.icon, title: '운명 사건 · ' + f.name,
-        body: '<p>' + esc(story.replace(/^【운명 사건】 [^—]+— /, '')) + '</p>' +
+        body: '<p>' + esc(nums(story.replace(/^【운명 사건】 [^—]+— /, ''))) + '</p>' +
           '<div class="modal-box"><h4>엮인 성좌</h4>' + o.inv.map(i => EMBLEMS[i] + ' ' + esc(D.constellations[i].name)).join(' · ') + '<br><b style="color:#ffb27a">' + takenTxt + '</b></div>' +
-          (o.lines.length ? '<div class="modal-box"><h4>결과</h4>' + o.lines.map(esc).join('<br>') + '</div>' : ''),
+          (o.lines.length ? '<div class="modal-box"><h4>결과</h4>' + o.lines.map(l => esc(nums(l))).join('<br>') + '</div>' : ''),
         actions: [{ label: '확인', cls: 'btn-gold' }]
       });
     } else toast('<b>운명 사건! ' + esc(f.name) + '</b> · ' + takenTxt, f.icon, 'red');
