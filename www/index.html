@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <link rel="icon" href="data:,">
+  <title>초공간 차원 붕괴: 인피니티</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap');
+    :root{
+      color-scheme:light dark;
+      --bg:#eef3f9;--bg2:#dfe9f5;--surface:rgba(255,255,255,.78);--surface-strong:#fff;
+      --line:rgba(24,50,82,.13);--line-bright:rgba(0,108,138,.35);--text:#0a1728;--muted:#52657c;
+      --cyan:#007f9e;--cyan-bright:#009fc2;--cyan-soft:rgba(0,127,158,.11);--gold:#a76500;--gold-bright:#c47b00;
+      --green:#087d60;--danger:#b23c55;--shadow:0 18px 48px rgba(19,45,75,.13);--deep:#061626;
+      --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Consolas,monospace;--sans:"IBM Plex Sans KR",sans-serif;
+    }
+    @media(prefers-color-scheme:dark){:root{
+      --bg:#03080e;--bg2:#07141f;--surface:rgba(8,22,34,.78);--surface-strong:#0b1d2a;
+      --line:rgba(133,190,211,.14);--line-bright:rgba(67,220,255,.4);--text:#edfaff;--muted:#8faaba;
+      --cyan:#53ddf5;--cyan-bright:#8aebfb;--cyan-soft:rgba(83,221,245,.1);--gold:#f4b64a;--gold-bright:#ffd67b;
+      --green:#50d9a7;--danger:#ff708d;--shadow:0 22px 70px rgba(0,0,0,.48);--deep:#02070c;
+    }}
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth;background:var(--bg)}
+    body{margin:0;min-height:100vh;background:
+      radial-gradient(circle at 14% -10%,rgba(0,172,209,.14),transparent 34rem),
+      radial-gradient(circle at 92% 14%,rgba(255,176,65,.1),transparent 30rem),
+      linear-gradient(160deg,var(--bg),var(--bg2));color:var(--text);font-family:var(--sans);overflow-x:hidden}
+    button,input,textarea{font:inherit}
+    button{color:inherit}
+    button:focus-visible,textarea:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
+    #starfield{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;opacity:.56;z-index:0}
+    .app{position:relative;z-index:1;width:min(1180px,100%);margin:auto;padding:18px 18px 72px}
+    .hud{position:sticky;top:10px;z-index:30;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:18px;padding:17px 20px;border:1px solid var(--line);background:var(--surface);backdrop-filter:blur(24px) saturate(150%);-webkit-backdrop-filter:blur(24px) saturate(150%);box-shadow:var(--shadow);border-radius:18px}
+    .resource-label{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:.78rem;font-weight:700;letter-spacing:.04em}
+    .live-dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 12px var(--green)}
+    .matter-line{display:flex;align-items:baseline;gap:11px;min-width:0;margin-top:3px}
+    .matter-value{font:700 clamp(1.7rem,4vw,2.8rem)/1 var(--mono);letter-spacing:-.055em;color:var(--cyan);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+    .unit{color:var(--muted);font-size:.8rem;font-weight:600}
+    .rate{font:600 .82rem/1.35 var(--mono);color:var(--green);text-align:right;white-space:nowrap}
+    .to-infinity{display:block;margin-top:6px;color:var(--muted);font:500 .68rem/1.3 var(--mono)}
+    .progress-rail{height:3px;margin-top:10px;background:var(--line);border-radius:99px;overflow:hidden}.progress-fill{height:100%;width:0;background:linear-gradient(90deg,var(--cyan),var(--gold));box-shadow:0 0 12px var(--cyan);transition:width .4s ease}
+    .tabs{position:sticky;top:112px;z-index:25;display:grid;grid-template-columns:repeat(6,1fr);gap:4px;margin:12px 0 18px;padding:5px;border:1px solid var(--line);border-radius:14px;background:var(--surface);backdrop-filter:blur(20px);box-shadow:0 10px 30px rgba(0,0,0,.12)}
+    .tab{border:0;background:transparent;color:var(--muted);border-radius:10px;padding:10px 8px;font-size:.79rem;font-weight:700;cursor:pointer;transition:background .2s,color .2s,box-shadow .2s;white-space:nowrap}
+    .tab:hover{color:var(--text);background:var(--cyan-soft)}.tab.active{color:var(--deep);background:var(--cyan);box-shadow:0 7px 18px rgba(0,151,186,.23)}
+    @media(prefers-color-scheme:dark){.tab.active{color:#031017}}
+    .tab.infinity.active{background:var(--gold);color:#211300}
+    .pane{display:none}.pane.active{display:block;animation:paneIn .25s ease-out}
+    @keyframes paneIn{from{opacity:.4;transform:translateY(4px)}to{opacity:1;transform:none}}
+    .section-head{display:flex;justify-content:space-between;align-items:end;gap:16px;margin:6px 2px 14px}
+    .section-head h2{margin:0;font-size:clamp(1.1rem,2.2vw,1.45rem);letter-spacing:-.025em}.section-head p{margin:5px 0 0;color:var(--muted);font-size:.79rem}
+    .buy-mode{display:flex;gap:3px;padding:3px;border:1px solid var(--line);background:var(--surface);border-radius:10px}.mode-btn{min-width:48px;border:0;background:transparent;color:var(--muted);border-radius:7px;padding:7px 10px;font:700 .72rem var(--mono);cursor:pointer}.mode-btn.active{background:var(--cyan);color:var(--deep)}
+    .prestige-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:16px}
+    .prestige-card,.panel,.dim-row,.stat-card,.achievement{border:1px solid var(--line);background:var(--surface);backdrop-filter:blur(17px);box-shadow:0 12px 34px rgba(0,0,0,.1)}
+    .prestige-card{position:relative;overflow:hidden;min-height:156px;padding:16px;border-radius:16px;display:flex;flex-direction:column;gap:9px}.prestige-card::after{content:"";position:absolute;inset:auto -30px -60px auto;width:130px;height:130px;border:1px solid var(--line-bright);border-radius:50%;opacity:.35}.prestige-card.ready{border-color:var(--line-bright);box-shadow:0 0 0 1px var(--cyan-soft),0 16px 42px rgba(0,119,146,.14)}.prestige-card.infinity-card{border-color:rgba(244,182,74,.32)}
+    .p-label{display:flex;justify-content:space-between;gap:8px;font-size:.76rem;color:var(--muted);font-weight:700}.p-count{font-family:var(--mono);color:var(--cyan)}.p-title{font-size:1rem;font-weight:700;letter-spacing:-.02em}.p-desc{min-height:34px;color:var(--muted);font-size:.74rem;line-height:1.45}.p-req{font:600 .68rem/1.35 var(--mono);color:var(--text)}
+    .primary,.secondary,.danger-btn{position:relative;border-radius:9px;padding:9px 12px;font-size:.74rem;font-weight:700;cursor:pointer;transition:transform .14s,filter .14s,border-color .14s;background:transparent}.primary{border:1px solid var(--cyan);background:var(--cyan);color:var(--deep)}.secondary{border:1px solid var(--line);background:var(--cyan-soft)}.danger-btn{border:1px solid rgba(255,91,123,.34);color:var(--danger)}.primary:hover:not(:disabled),.secondary:hover:not(:disabled),.danger-btn:hover:not(:disabled){transform:translateY(-1px);filter:brightness(1.08)}button:disabled{opacity:.38;cursor:not-allowed}
+    .tool-row{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px}.max-all{padding:10px 15px}.hotkey{color:var(--muted);font:500 .68rem var(--mono)}
+    .dimension-list{display:grid;gap:8px}.dim-row{position:relative;display:grid;grid-template-columns:84px minmax(0,1fr) minmax(145px,auto);gap:15px;align-items:center;padding:14px 15px;border-radius:13px;overflow:hidden;transition:border-color .18s,background .18s}.dim-row:hover{border-color:var(--line-bright)}.locked-dim{opacity:.56;background:linear-gradient(90deg,var(--surface),transparent)}.locked-dim .dim-orbit{border-style:dashed}.locked-dim:hover{opacity:.72}.dim-index{display:flex;align-items:center;gap:10px}.dim-orbit{width:28px;height:28px;border:1px solid var(--line-bright);border-radius:50%;display:grid;place-items:center;font:700 .68rem var(--mono);color:var(--cyan);box-shadow:inset 0 0 12px var(--cyan-soft)}.dim-name{font-size:.8rem;font-weight:700}.dim-data{min-width:0}.dim-amount{font:700 .98rem/1.35 var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dim-meta{display:flex;gap:10px;margin-top:3px;color:var(--muted);font-size:.69rem}.mult{color:var(--cyan);font-family:var(--mono)}.dim-buy{display:flex;gap:8px;align-items:center}.cost-block{text-align:right}.cost-label{display:block;color:var(--muted);font-size:.63rem}.cost{font:600 .71rem var(--mono);color:var(--cyan)}.buy-btn{min-width:88px}
+    .panel{border-radius:16px;padding:18px;margin-bottom:12px}.panel-title{margin:0 0 5px;font-size:1rem}.panel-copy{margin:0;color:var(--muted);font-size:.78rem;line-height:1.55}.metric{margin:20px 0 12px;font:700 clamp(1.35rem,3vw,2rem) var(--mono);color:var(--cyan)}.metric small{font-size:.7rem;color:var(--muted)}
+    .engine{display:grid;grid-template-columns:1fr auto;align-items:center;gap:18px}.engine-visual{position:relative;width:116px;height:116px;border:1px solid var(--line-bright);border-radius:50%;display:grid;place-items:center;box-shadow:inset 0 0 30px var(--cyan-soft),0 0 24px var(--cyan-soft)}.engine-visual::before,.engine-visual::after{content:"";position:absolute;border:1px dashed var(--line-bright);border-radius:50%;animation:spin 9s linear infinite}.engine-visual::before{inset:13px}.engine-visual::after{inset:28px;animation-direction:reverse;animation-duration:6s}.engine-core{width:19px;height:19px;border-radius:50%;background:var(--cyan);box-shadow:0 0 22px var(--cyan)}@keyframes spin{to{transform:rotate(360deg)}}
+    .upgrade-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:12px}.upgrade{border:1px solid rgba(244,182,74,.25);border-radius:12px;padding:14px;background:linear-gradient(140deg,rgba(244,182,74,.06),transparent)}.upgrade.bought{border-color:rgba(80,217,167,.4);background:rgba(80,217,167,.06)}.upgrade h3{margin:0 0 5px;font-size:.86rem;color:var(--gold)}.upgrade p{min-height:35px;margin:0 0 12px;color:var(--muted);font-size:.72rem;line-height:1.45}
+    .achievement-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}.achievement{min-height:112px;border-radius:12px;padding:12px;display:flex;flex-direction:column;justify-content:space-between}.achievement.locked{filter:saturate(.15);opacity:.55}.achievement.unlocked{border-color:rgba(80,217,167,.38);background:linear-gradient(145deg,rgba(80,217,167,.1),var(--surface))}.ach-code{font:600 .64rem var(--mono);color:var(--muted)}.ach-mark{width:30px;height:30px;border-radius:50%;border:1px solid var(--line);display:grid;place-items:center;color:var(--muted);font:700 .8rem var(--mono)}.unlocked .ach-mark{color:var(--green);border-color:var(--green);box-shadow:0 0 14px rgba(80,217,167,.18)}.ach-name{font-size:.74rem;font-weight:700;line-height:1.35}.ach-desc{display:none}
+    .stats-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}.stat-card{padding:15px;border-radius:12px}.stat-label{color:var(--muted);font-size:.7rem}.stat-value{margin-top:8px;font:700 1.04rem/1.35 var(--mono);color:var(--cyan);overflow:hidden;text-overflow:ellipsis}.history{margin-top:12px}.history-row{display:grid;grid-template-columns:1fr auto;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);font-size:.76rem}.history-row span:last-child{font-family:var(--mono);color:var(--muted)}
+    .settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.button-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:15px}.save-note{margin-top:11px;padding:10px 12px;border:1px solid var(--line);border-radius:9px;color:var(--muted);font-size:.7rem;line-height:1.5}.file-input{display:none}
+    .toggle-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--line);font-size:.78rem}.switch{position:relative;width:42px;height:23px;border:1px solid var(--line);border-radius:99px;background:var(--bg);cursor:pointer}.switch::after{content:"";position:absolute;top:3px;left:3px;width:15px;height:15px;border-radius:50%;background:var(--muted);transition:.2s}.switch.on{background:var(--cyan-soft);border-color:var(--cyan)}.switch.on::after{left:22px;background:var(--cyan)}
+    .modal-backdrop{position:fixed;inset:0;z-index:100;display:none;place-items:center;padding:18px;background:rgba(0,7,13,.7);backdrop-filter:blur(10px)}.modal-backdrop.open{display:grid}.modal{width:min(440px,100%);border:1px solid var(--line-bright);border-radius:18px;padding:22px;background:var(--surface-strong);box-shadow:0 24px 100px rgba(0,0,0,.55);animation:modalIn .2s ease-out}.modal h2{margin:0 0 7px;font-size:1.15rem}.modal p{margin:0;color:var(--muted);font-size:.79rem;line-height:1.6}.modal-summary{margin:15px 0;padding:13px;border:1px solid var(--line);border-radius:10px;background:var(--cyan-soft);font:600 .75rem/1.55 var(--mono)}.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}@keyframes modalIn{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:none}}
+    .toast-stack{position:fixed;right:18px;bottom:18px;z-index:120;display:grid;gap:8px;pointer-events:none}.toast{width:min(340px,calc(100vw - 36px));border:1px solid var(--line-bright);border-radius:11px;padding:11px 13px;background:var(--surface-strong);box-shadow:var(--shadow);font-size:.76rem;font-weight:600;animation:toastIn .25s ease-out}.toast b{color:var(--cyan)}@keyframes toastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+    .float-num{position:fixed;z-index:80;pointer-events:none;color:var(--green);font:700 .78rem var(--mono);text-shadow:0 1px 8px var(--bg);animation:floatUp .85s ease-out forwards}@keyframes floatUp{to{transform:translateY(-42px);opacity:0}}
+    .pulse{animation:valuePulse .24s ease-out}@keyframes valuePulse{50%{filter:brightness(1.5);transform:translateY(-1px)}}
+    .hidden{display:none!important}
+    @media(max-width:900px){.prestige-grid{grid-template-columns:repeat(2,1fr)}.achievement-grid{grid-template-columns:repeat(4,1fr)}.stats-grid{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:640px){
+      #pane-dimensions.active{display:flex;flex-direction:column}#pane-dimensions .section-head{order:1}#pane-dimensions .tool-row{order:2}#pane-dimensions .dimension-list{order:3}#pane-dimensions .prestige-grid{order:4;margin-top:10px}
+      .app{padding:10px 10px 56px}.hud{top:6px;padding:13px 14px;border-radius:14px;grid-template-columns:minmax(0,1fr) auto}.matter-value{font-size:1.55rem}.rate{font-size:.68rem}.to-infinity{font-size:.58rem}.tabs{top:93px;grid-template-columns:repeat(3,1fr);margin:8px 0 14px;border-radius:12px}.tab{padding:8px 5px;font-size:.7rem}.prestige-grid{grid-template-columns:1fr 1fr;gap:7px}.prestige-card{min-height:147px;padding:13px}.p-desc{font-size:.67rem}.section-head{align-items:start}.section-head p{display:none}.buy-mode{flex-shrink:0}.mode-btn{min-width:40px;padding:6px 7px}.dim-row{grid-template-columns:1fr auto;gap:8px 10px;padding:12px}.dim-index{grid-column:1}.dim-data{grid-column:1}.dim-buy{grid-column:2;grid-row:1 / span 2;flex-direction:column;align-items:stretch}.cost-block{text-align:center}.buy-btn{min-width:76px;height:48px}.dim-meta{flex-wrap:wrap;gap:5px 8px}.engine{grid-template-columns:1fr}.engine-visual{display:none}.upgrade-grid,.settings-grid{grid-template-columns:1fr}.achievement-grid{grid-template-columns:repeat(3,1fr)}.achievement{min-height:105px;padding:10px}.stats-grid{grid-template-columns:1fr 1fr}.tool-row{align-items:end}.hotkey{display:none}.toast-stack{left:10px;right:10px;bottom:10px}.toast{width:100%}}
+    @media(max-width:390px){.prestige-grid{grid-template-columns:1fr}.achievement-grid{grid-template-columns:repeat(2,1fr)}}
+    @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.001ms!important}#starfield{display:none}}
+  </style>
+</head>
+<body>
+<canvas id="starfield" aria-hidden="true"></canvas>
+<div class="app">
+  <header class="hud" aria-label="반물질 현황">
+    <div>
+      <div class="resource-label"><span class="live-dot"></span>초공간 반물질</div>
+      <div class="matter-line"><span class="matter-value" id="matter">10.00</span><span class="unit">AM</span></div>
+      <div class="progress-rail"><div class="progress-fill" id="infinity-progress"></div></div>
+    </div>
+    <div class="rate"><span id="rate">+0.00 /초</span><span class="to-infinity" id="infinity-distance">∞까지 1.79e308</span></div>
+  </header>
+
+  <nav class="tabs" aria-label="게임 메뉴">
+    <button class="tab active" data-tab="dimensions">차원</button>
+    <button class="tab" data-tab="tickspeed">틱스피드</button>
+    <button class="tab infinity" data-tab="infinity" id="infinity-tab">인피니티</button>
+    <button class="tab" data-tab="achievements">업적</button>
+    <button class="tab" data-tab="stats">통계</button>
+    <button class="tab" data-tab="settings">설정</button>
+  </nav>
+
+  <main>
+    <section class="pane active" id="pane-dimensions">
+      <div class="section-head"><div><h2>차원 네트워크</h2><p>상위 차원은 바로 아래 차원을, 제1차원은 반물질을 생산합니다.</p></div><div class="buy-mode" aria-label="구매 수량"><button class="mode-btn active" data-mode="1">×1</button><button class="mode-btn" data-mode="10">×10</button><button class="mode-btn" data-mode="max">MAX</button></div></div>
+      <div class="prestige-grid" id="prestige-grid"></div>
+      <div class="tool-row"><span class="hotkey">단축키 1–8 구매 · M 전체 최대</span><button class="primary max-all" id="max-all">모든 차원 최대 구매</button></div>
+      <div class="dimension-list" id="dimension-list"></div>
+    </section>
+
+    <section class="pane" id="pane-tickspeed">
+      <div class="section-head"><div><h2>틱스피드 엔진</h2><p>모든 차원 생산 사이클의 시간축을 압축합니다.</p></div></div>
+      <div class="panel engine"><div><h3 class="panel-title">국소 시간 가속기</h3><p class="panel-copy">업그레이드마다 틱 주기가 12% 단축됩니다. 반물질 은하는 감소폭을 더 크게 만듭니다.</p><div class="metric" id="tick-metric">1,000 ms <small>현재 틱 주기</small></div><button class="primary" id="buy-tick">틱스피드 가속</button></div><div class="engine-visual" aria-hidden="true"><div class="engine-core"></div></div></div>
+    </section>
+
+    <section class="pane" id="pane-infinity">
+      <div class="section-head"><div><h2>인피니티 영역</h2><p>빅 크런치 이후에도 유지되는 영구 업그레이드입니다.</p></div><div class="metric" style="margin:0"><span id="ip">0</span> <small>IP</small></div></div>
+      <div class="panel"><h3 class="panel-title">무한 우주 구조</h3><p class="panel-copy">인피니티 포인트를 소비해 다음 우주의 법칙을 재작성합니다.</p><div class="upgrade-grid" id="upgrade-grid"></div></div>
+    </section>
+
+    <section class="pane" id="pane-achievements">
+      <div class="section-head"><div><h2>업적 기록</h2><p>달성한 업적 하나마다 모든 차원 생산량이 5% 증가합니다.</p></div><div class="metric" style="margin:0"><span id="achievement-count">0</span><small> / 24</small></div></div>
+      <div class="achievement-grid" id="achievement-grid"></div>
+    </section>
+
+    <section class="pane" id="pane-stats">
+      <div class="section-head"><div><h2>우주 관측 기록</h2><p>현재 세션과 불러온 세이브의 누적 기록입니다.</p></div></div>
+      <div class="stats-grid" id="stats-grid"></div>
+      <div class="panel history"><h3 class="panel-title">진행 기록</h3><div id="history-list"></div></div>
+    </section>
+
+    <section class="pane" id="pane-settings">
+      <div class="section-head"><div><h2>설정 및 세이브</h2><p>세이브 파일에는 오프라인 진행을 위한 저장 시각이 포함됩니다.</p></div></div>
+      <div class="settings-grid">
+        <div class="panel"><h3 class="panel-title">데이터 관리</h3><p class="panel-copy">현재 진행을 파일로 내려받거나 이전 세이브를 불러올 수 있습니다.</p><div class="button-row"><button class="primary" id="export-save">세이브 다운로드</button><button class="secondary" id="import-save">세이브 불러오기</button><button class="danger-btn" id="reset-save">진행 초기화</button><input class="file-input" type="file" id="save-file" accept="application/json,.json"></div><div class="save-note">브라우저 내부 저장소를 사용하지 않습니다. 게임을 닫기 전 세이브를 내려받고, 다음 접속 때 불러오면 저장 이후 경과한 시간의 생산량을 계산합니다.</div></div>
+        <div class="panel"><h3 class="panel-title">게임 피드백</h3><div class="toggle-row"><span>효과음</span><button class="switch on" id="sound-toggle" role="switch" aria-checked="true" aria-label="효과음"></button></div><div class="toggle-row"><span>숫자 팝업</span><button class="switch on" id="popup-toggle" role="switch" aria-checked="true" aria-label="숫자 팝업"></button></div><div class="toggle-row"><span>축약 숫자 표기</span><button class="switch on" id="notation-toggle" role="switch" aria-checked="true" aria-label="축약 숫자 표기"></button></div></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="modal-backdrop" id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+  <div class="modal"><h2 id="modal-title">확인</h2><p id="modal-copy"></p><div class="modal-summary" id="modal-summary"></div><div class="modal-actions"><button class="secondary" id="modal-cancel">취소</button><button class="primary" id="modal-confirm">실행</button></div></div>
+</div>
+<div class="toast-stack" id="toasts" aria-live="polite"></div>
+
+<script>
+(function(){
+'use strict';
+class BigNum{
+  constructor(m=0,e=0){if(m instanceof BigNum){this.m=m.m;this.e=m.e}else if(typeof m==='object'&&m&&'m'in m){this.m=Number(m.m)||0;this.e=Number(m.e)||0}else if(typeof m==='string'&&m.toLowerCase().includes('e')){const p=m.toLowerCase().split('e');this.m=Number(p[0]);this.e=Number(p[1])}else{this.m=Number(m)||0;this.e=e||0}this.normalize()}
+  normalize(){if(!isFinite(this.m)){this.m=9.999;this.e=Number.MAX_SAFE_INTEGER;return this}if(this.m<=0||isNaN(this.m)){this.m=0;this.e=0;return this}const s=Math.floor(Math.log10(Math.abs(this.m)));if(s!==0){this.m/=Math.pow(10,s);this.e+=s}return this}
+  gte(o){o=new BigNum(o);return this.e===o.e?this.m>=o.m:this.e>o.e} gt(o){o=new BigNum(o);return this.e===o.e?this.m>o.m:this.e>o.e}
+  add(o){o=new BigNum(o);const d=this.e-o.e;if(d>16)return new BigNum(this);if(d<-16)return new BigNum(o);return new BigNum(this.m+o.m*Math.pow(10,-d),this.e)}
+  sub(o){o=new BigNum(o);const d=this.e-o.e;if(d>16)return new BigNum(this);if(d<-16)return new BigNum(0);const n=this.m-o.m*Math.pow(10,-d);return n<=0?new BigNum(0):new BigNum(n,this.e)}
+  mul(o){o=new BigNum(o);if(!this.m||!o.m)return new BigNum(0);return new BigNum(this.m*o.m,this.e+o.e)} div(o){o=new BigNum(o);return !o.m?new BigNum(0):new BigNum(this.m/o.m,this.e-o.e)}
+  toJSON(){return{m:this.m,e:this.e}}
+}
+const INF=new BigNum(1.79,308), dimsBase=[['제1차원',new BigNum(10),1e3],['제2차원',new BigNum(100),1e4],['제3차원',new BigNum(1,4),1e5],['제4차원',new BigNum(1,6),1e6],['제5차원',new BigNum(1,9),1e8],['제6차원',new BigNum(1,13),1e10],['제7차원',new BigNum(1,18),1e12],['제8차원',new BigNum(1,24),1e15]];
+const upgradeDefs=[['시공간 압축','차원 부스트 배율이 ×2에서 ×2.5로 증가합니다.',1],['은하 가속','은하 1개당 틱스피드 감소폭이 추가됩니다.',1],['무한 생성기','제1차원의 기본 생산량이 영구적으로 100배 증가합니다.',2],['초공간 시너지','보유한 IP 1개당 전체 생산량이 2배씩 증가합니다.',5]];
+const achDefs=[
+ ['첫 진동','제1차원 구매'],['임계 질량','반물질 1,000 도달'],['차원 여행자','차원 교체 1회'],['은하의 지배자','반물질 은하 1개'],['무한 너머','빅 크런치 1회'],['한 묶음','한 차원 10개 구매'],
+ ['다중 스펙트럼','제4차원 보유'],['심층 관측','제8차원 개방'],['가속 실험','틱스피드 5회'],['시간 설계자','틱스피드 10회'],['부스트 점화','차원 부스트 1회'],['연쇄 반응','차원 부스트 5회'],
+ ['쌍둥이 은하','반물질 은하 2개'],['은하단','반물질 은하 5개'],['초거대 수','반물질 1e50'],['경계 접근','반물질 1e100'],['사건의 지평선','반물질 1e200'],['완전한 붕괴','인피니티 도달'],
+ ['영구 흔적','인피니티 업그레이드 1개'],['법칙 재작성','인피니티 업그레이드 4개'],['반복 우주','빅 크런치 2회'],['다중 우주','빅 크런치 5회'],['차원 수집가','차원 총 100개 구매'],['인피니티','24개 업적의 정점']
+];
+function fresh(){return{version:2,matter:new BigNum(10),ip:0,shifts:0,boosts:0,galaxies:0,infinities:0,tickspeedCost:new BigNum(1,3),tickspeedPurchased:0,dims:dimsBase.map((d,i)=>({id:i+1,amount:new BigNum(0),bought:0,baseCost:d[1],costMult:d[2]})),infinityUpgrades:upgradeDefs.map((u,i)=>({id:i,name:u[0],desc:u[1],cost:u[2],bought:false})),achievements:Array(24).fill(false),stats:{startedAt:Date.now(),playSeconds:0,totalMatter:new BigNum(10),totalPurchases:0,crunches:0,history:['새 우주 관측 시작']},savedAt:Date.now()}}
+let state=fresh(),buyMode='1',activeTab='dimensions',sound=true,popups=true,compact=true,lastFrame=performance.now(),lastUi=0,pendingAction=null;
+const $=s=>document.querySelector(s),$$=s=>Array.from(document.querySelectorAll(s));
+function esc(v){return String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function format(n){n=new BigNum(n);if(!n.m)return'0';if(!compact&&n.e<16)return(n.m*Math.pow(10,n.e)).toLocaleString('ko-KR',{maximumFractionDigits:2});if(n.e<3){const v=n.m*Math.pow(10,n.e);return v<10?v.toFixed(2):v<100?v.toFixed(1):Math.floor(v).toLocaleString('ko-KR')}if(n.e<6)return Math.floor(n.m*Math.pow(10,n.e)).toLocaleString('ko-KR');const groups=['','K','M','B','T','Qa','Qi','Sx','Sp','Oc','No'];const g=Math.floor(n.e/3);if(compact&&g<groups.length)return(n.m*Math.pow(10,n.e-g*3)).toFixed(2)+groups[g];return n.m.toFixed(3)+'e'+n.e}
+function log10(n){return n.m?Math.log10(n.m)+n.e:0}
+function unlocked(){return Math.min(8,4+state.shifts)}
+function dimCost(d,offset=0){let c=new BigNum(d.baseCost);const b=d.bought+offset;if(b>0)c=c.mul(new BigNum(d.costMult)).mul(Math.pow(1.15,b));return c}
+function dimMult(d){let m=new BigNum(1).mul(Math.pow(2,Math.floor(d.bought/10)));if(state.boosts)m=m.mul(Math.pow(state.infinityUpgrades[0].bought?2.5:2,state.boosts));if(d.id===1&&state.infinityUpgrades[2].bought)m=m.mul(100);if(state.infinityUpgrades[3].bought)m=m.mul(Math.max(1,state.ip*2));m=m.mul(1+state.achievements.filter(Boolean).length*.05);return m}
+function tickBase(){let b=.88;if(state.galaxies)b=Math.max(.6,b-state.galaxies*(state.infinityUpgrades[1].bought?.03:.02));return b}
+function speedFactor(){return Math.pow(1/tickBase(),state.tickspeedPurchased)}
+function productionRate(){return state.dims[0].amount.mul(dimMult(state.dims[0])).mul(speedFactor())}
+function canBuyCount(d,mode){let temp=new BigNum(state.matter),count=0,target=mode==='max'?10000:Number(mode);while(count<target){const c=dimCost(d,count);if(!temp.gte(c))break;temp=temp.sub(c);count++}return count}
+function buyDimension(id,mode=buyMode,anchor){const d=state.dims[id-1];if(id>unlocked())return;const count=canBuyCount(d,mode);if(!count){toast('반물질이 부족합니다.');shake(anchor);return}let spent=new BigNum(0);for(let i=0;i<count;i++)spent=spent.add(dimCost(d,i));state.matter=state.matter.sub(spent);d.amount=d.amount.add(count);d.bought+=count;state.stats.totalPurchases+=count;chime(170+id*45);if(popups&&anchor)floatText(anchor,'+'+count);pulse($('#matter'));checkAchievements();renderDimensions();renderHud()}
+function buyMaxAll(){let total=0;for(let i=unlocked();i>=1;i--){const d=state.dims[i-1],count=canBuyCount(d,'max');if(count){let spent=new BigNum(0);for(let j=0;j<count;j++)spent=spent.add(dimCost(d,j));state.matter=state.matter.sub(spent);d.amount=d.amount.add(count);d.bought+=count;total+=count}}if(total){state.stats.totalPurchases+=total;toast('<b>'+total+'개</b> 차원을 일괄 구매했습니다.');chime(540);renderAll()}else toast('구매 가능한 차원이 없습니다.')}
+function resetMatterDims(){state.matter=new BigNum(10);state.dims.forEach(d=>{d.amount=new BigNum(0);d.bought=0})}
+function prestige(type){if(type==='shift'){const u=unlocked(),d=state.dims[u-1];if(u>=8||d.bought<20)return toast(u>=8?'8차원이 모두 개방되었습니다.':'요구 수량이 부족합니다.');state.shifts++;resetMatterDims();record('제'+unlocked()+'차원 개방');toast('새로운 차원이 개방되었습니다.');chime(720)}else if(type==='boost'){const d=state.dims[unlocked()-1],req=20+state.boosts*10;if(d.bought<req)return toast('차원 부스트 요구 수량이 부족합니다.');state.boosts++;resetMatterDims();record('차원 부스트 #'+state.boosts);toast('전체 생산 배율이 강화되었습니다.');chime(840)}else if(type==='galaxy'){const d=state.dims[7],req=80+state.galaxies*40;if(state.shifts<4||d.bought<req)return toast('반물질 은하 요구 조건이 부족합니다.');state.galaxies++;state.shifts=0;state.boosts=0;resetMatterDims();record('반물질 은하 #'+state.galaxies);toast('틱스피드 법칙이 강화되었습니다.');chime(1020)}checkAchievements();renderAll()}
+function openPrestige(type){let title,copy,summary,ok=false;if(type==='shift'){const u=unlocked(),d=state.dims[u-1];title='차원 교체';copy='현재 반물질과 모든 차원을 초기화하고 다음 차원을 개방합니다.';summary='요구: 제'+u+'차원 20개 · 현재 '+d.bought+'개';ok=u<8&&d.bought>=20}else if(type==='boost'){const d=state.dims[unlocked()-1],req=20+state.boosts*10;title='차원 부스트';copy='현재 반물질과 차원을 초기화하고 모든 차원의 생산 배율을 강화합니다.';summary='요구: 제'+unlocked()+'차원 '+req+'개 · 현재 '+d.bought+'개';ok=d.bought>=req}else if(type==='galaxy'){const d=state.dims[7],req=80+state.galaxies*40;title='반물질 은하';copy='차원 교체와 부스트를 초기화하고 틱스피드의 기본 법칙을 강화합니다.';summary='요구: 제8차원 '+req+'개 · 현재 '+d.bought+'개';ok=state.shifts>=4&&d.bought>=req}else{title='빅 크런치';copy='현재 우주를 완전히 붕괴시킵니다. 차원, 교체, 부스트, 은하, 틱스피드는 초기화되고 인피니티 포인트 1점을 획득합니다.';summary='획득: +1 IP · 누적 '+(state.infinities+1)+'회';ok=state.matter.gte(INF)}openModal(title,copy,summary,ok?()=>type==='crunch'?bigCrunch():prestige(type):null)}
+function bigCrunch(){if(!state.matter.gte(INF))return;state.ip++;state.infinities++;state.stats.crunches++;state.matter=new BigNum(10);state.shifts=state.boosts=state.galaxies=state.tickspeedPurchased=0;state.tickspeedCost=new BigNum(1,3);state.dims.forEach(d=>{d.amount=new BigNum(0);d.bought=0});record('빅 크런치 #'+state.infinities);toast('<b>인피니티 포인트 +1</b> · 새로운 우주가 시작됩니다.');chime(1200);checkAchievements();renderAll()}
+function buyTick(){if(!state.matter.gte(state.tickspeedCost))return toast('반물질이 부족합니다.');state.matter=state.matter.sub(state.tickspeedCost);state.tickspeedPurchased++;state.tickspeedCost=state.tickspeedCost.mul(10);chime(610);checkAchievements();renderAll()}
+function buyUpgrade(id){const u=state.infinityUpgrades[id];if(u.bought||state.ip<u.cost)return;state.ip-=u.cost;u.bought=true;record('인피니티 업그레이드 · '+u.name);toast('<b>'+u.name+'</b> 활성화');chime(930);checkAchievements();renderAll()}
+function renderHud(){const m=$('#matter'),prev=m.textContent,next=format(state.matter);if(prev!==next){m.textContent=next;if(performance.now()-lastUi>240)pulse(m)}$('#rate').textContent='+'+format(productionRate())+' /초';const p=Math.max(0,Math.min(100,log10(state.matter)/308.252*100));$('#infinity-progress').style.width=p+'%';const remain=Math.max(0,309-Math.floor(log10(state.matter)));$('#infinity-distance').textContent=state.matter.gte(INF)?'빅 크런치 가능':'∞까지 약 '+remain+'자릿수'}
+function renderPrestige(){const u=unlocked(),shiftD=state.dims[u-1],boostReq=20+state.boosts*10,galReq=80+state.galaxies*40;const cards=[
+ {type:'shift',k:'DIMENSION SHIFT',title:'차원 교체',count:'#'+state.shifts,desc:u>=8?'8개 차원이 모두 개방되었습니다.':'초기화 후 제'+(u+1)+'차원을 개방합니다.',req:u>=8?'완료':'제'+u+'차원 '+shiftD.bought+' / 20',ready:u<8&&shiftD.bought>=20,btn:u>=8?'개방 완료':'교체 실행'},
+ {type:'boost',k:'DIMENSION BOOST',title:'차원 부스트',count:'#'+state.boosts,desc:'모든 차원의 생산 배율을 증폭합니다.',req:'제'+u+'차원 '+state.dims[u-1].bought+' / '+boostReq,ready:state.dims[u-1].bought>=boostReq,btn:'부스트 실행'},
+ {type:'galaxy',k:'ANTIMATTER GALAXY',title:'반물질 은하',count:'#'+state.galaxies,desc:'틱스피드의 기본 가속률을 강화합니다.',req:'제8차원 '+state.dims[7].bought+' / '+galReq,ready:state.shifts>=4&&state.dims[7].bought>=galReq,btn:'은하 생성'},
+ {type:'crunch',k:'BIG CRUNCH',title:'빅 크런치',count:'∞',desc:'우주를 붕괴시키고 영구 자원을 획득합니다.',req:state.matter.gte(INF)?'보상 +1 IP':'1.79e308 반물질 필요',ready:state.matter.gte(INF),btn:'인피니티 리셋'}];
+ $('#prestige-grid').innerHTML=cards.map(c=>'<article class="prestige-card '+(c.ready?'ready ':'')+(c.type==='crunch'?'infinity-card':'')+'"><div class="p-label"><span>'+c.k+'</span><span class="p-count">'+c.count+'</span></div><div class="p-title">'+c.title+'</div><div class="p-desc">'+c.desc+'</div><div class="p-req">'+c.req+'</div><button class="'+(c.type==='crunch'?'primary':'secondary')+'" data-prestige="'+c.type+'" '+(!c.ready?'disabled':'')+'>'+c.btn+'</button></article>').join('');$$('[data-prestige]').forEach(b=>b.onclick=()=>openPrestige(b.dataset.prestige))}
+function renderDimensions(){const u=unlocked();$('#dimension-list').innerHTML=state.dims.map(d=>{const locked=d.id>u,cost=dimCost(d),count=locked?0:canBuyCount(d,buyMode),label=buyMode==='max'?'MAX':'×'+buyMode;return '<article class="dim-row '+(locked?'locked-dim':'')+'"><div class="dim-index"><span class="dim-orbit">'+String(d.id).padStart(2,'0')+'</span><span class="dim-name">'+dimsBase[d.id-1][0]+'</span></div><div class="dim-data"><div class="dim-amount">'+(locked?'잠김':format(d.amount))+'</div><div class="dim-meta">'+(locked?'<span>차원 교체로 개방</span>':'<span class="mult">×'+format(dimMult(d))+'</span><span>'+d.bought+' 구매</span><span>'+(d.id===1?'반물질 생산':'제'+(d.id-1)+'차원 생산')+'</span>')+'</div></div><div class="dim-buy"><div class="cost-block"><span class="cost-label">'+(locked?'기본 비용':count?count+'개 구매 가능':'다음 비용')+'</span><span class="cost">'+format(cost)+'</span></div><button class="primary buy-btn" data-buy="'+d.id+'" '+(!count?'disabled':'')+'>'+(locked?'LOCK':label)+'</button></div></article>'}).join('');$$('[data-buy]').forEach(b=>b.onclick=()=>buyDimension(Number(b.dataset.buy),buyMode,b))}
+function renderTicks(){const ms=Math.max(1,Math.floor(1000/ speedFactor()));$('#tick-metric').innerHTML=ms.toLocaleString('ko-KR')+' ms <small>현재 틱 주기 · '+state.tickspeedPurchased+'회</small>';const b=$('#buy-tick');b.textContent='가속 업그레이드 · '+format(state.tickspeedCost)+' AM';b.disabled=!state.matter.gte(state.tickspeedCost)}
+function renderInfinity(){$('#ip').textContent=state.ip;$('#upgrade-grid').innerHTML=state.infinityUpgrades.map(u=>'<article class="upgrade '+(u.bought?'bought':'')+'"><h3>'+u.name+'</h3><p>'+u.desc+'</p><button class="secondary" data-upgrade="'+u.id+'" '+(u.bought||state.ip<u.cost?'disabled':'')+'>'+(u.bought?'활성화됨':u.cost+' IP')+'</button></article>').join('');$$('[data-upgrade]').forEach(b=>b.onclick=()=>buyUpgrade(Number(b.dataset.upgrade)))}
+function achievementConditions(){const totalBought=state.dims.reduce((a,d)=>a+d.bought,0),maxBought=Math.max(...state.dims.map(d=>d.bought)),ups=state.infinityUpgrades.filter(u=>u.bought).length;return[totalBought>=1,state.matter.gte(1000),state.shifts>=1,state.galaxies>=1,state.infinities>=1,maxBought>=10,state.dims[3].amount.gt(0),unlocked()>=8,state.tickspeedPurchased>=5,state.tickspeedPurchased>=10,state.boosts>=1,state.boosts>=5,state.galaxies>=2,state.galaxies>=5,state.matter.gte(new BigNum(1,50)),state.matter.gte(new BigNum(1,100)),state.matter.gte(new BigNum(1,200)),state.matter.gte(INF),ups>=1,ups>=4,state.infinities>=2,state.infinities>=5,state.stats.totalPurchases>=100,state.achievements.slice(0,23).every(Boolean)]}
+function checkAchievements(){const c=achievementConditions();let changed=false;c.forEach((v,i)=>{if(v&&!state.achievements[i]){state.achievements[i]=true;changed=true;toast('<b>업적 달성</b> · '+achDefs[i][0]);chime(760+i*8)}});if(changed&&activeTab==='achievements')renderAchievements()}
+function renderAchievements(){$('#achievement-count').textContent=state.achievements.filter(Boolean).length;$('#achievement-grid').innerHTML=achDefs.map((a,i)=>'<article class="achievement '+(state.achievements[i]?'unlocked':'locked')+'" title="'+a[1]+'"><div class="ach-code">R'+String(Math.floor(i/6)+1)+' · '+String(i+1).padStart(2,'0')+'</div><div class="ach-mark">'+(state.achievements[i]?'✓':'·')+'</div><div class="ach-name">'+a[0]+'</div></article>').join('')}
+function formatTime(sec){sec=Math.floor(sec);const d=Math.floor(sec/86400),h=Math.floor(sec%86400/3600),m=Math.floor(sec%3600/60),s=sec%60;return d?d+'일 '+h+'시간':h?h+'시간 '+m+'분':m?m+'분 '+s+'초':s+'초'}
+function renderStats(){const stats=[['총 플레이 시간',formatTime(state.stats.playSeconds)],['누적 반물질',format(state.stats.totalMatter)],['총 차원 구매',state.stats.totalPurchases.toLocaleString('ko-KR')],['빅 크런치',state.infinities.toLocaleString('ko-KR')],['차원 교체',state.shifts.toLocaleString('ko-KR')],['차원 부스트',state.boosts.toLocaleString('ko-KR')],['반물질 은하',state.galaxies.toLocaleString('ko-KR')],['생산 가속','×'+format(new BigNum(speedFactor()))]];$('#stats-grid').innerHTML=stats.map(s=>'<article class="stat-card"><div class="stat-label">'+esc(s[0])+'</div><div class="stat-value">'+esc(s[1])+'</div></article>').join('');$('#history-list').innerHTML=(state.stats.history||[]).slice(-8).reverse().map((h,i)=>'<div class="history-row"><span>'+esc(h)+'</span><span>'+esc(('#'+(state.stats.history.length-i)).padStart(3,'0'))+'</span></div>').join('')||'<div class="history-row"><span>기록 없음</span><span>—</span></div>'}
+function renderAll(){renderHud();renderPrestige();renderDimensions();renderTicks();renderInfinity();renderAchievements();renderStats();lastUi=performance.now()}
+function produce(dt,track=true){const factor=speedFactor();dt*=factor;const u=unlocked();for(let i=u;i>=2;i--){const higher=state.dims[i-1],lower=state.dims[i-2];lower.amount=lower.amount.add(higher.amount.mul(dimMult(higher)).mul(dt*.1))}const gain=state.dims[0].amount.mul(dimMult(state.dims[0])).mul(dt);state.matter=state.matter.add(gain);if(track)state.stats.totalMatter=state.stats.totalMatter.add(gain);return gain}
+function offlineProduce(seconds){const t=seconds*speedFactor(),u=unlocked(),original=state.dims.map(d=>new BigNum(d.amount)),mult=state.dims.map(d=>dimMult(d));for(let i=0;i<u;i++){let add=new BigNum(0);for(let j=i+1;j<u;j++){let coeff=1;for(let k=i+1;k<=j;k++)coeff*=.1;coeff*=Math.pow(t,j-i)/factorial(j-i);let chain=new BigNum(1);for(let k=i+1;k<=j;k++)chain=chain.mul(mult[k]);add=add.add(original[j].mul(chain).mul(coeff))}state.dims[i].amount=state.dims[i].amount.add(add)}let gain=new BigNum(0);for(let j=0;j<u;j++){let coeff=Math.pow(t,j+1)/factorial(j+1);for(let k=1;k<=j;k++)coeff*=.1;let chain=mult[0];for(let k=1;k<=j;k++)chain=chain.mul(mult[k]);gain=gain.add(original[j].mul(chain).mul(coeff))}state.matter=state.matter.add(gain);state.stats.totalMatter=state.stats.totalMatter.add(gain);return gain}
+function factorial(n){let x=1;for(let i=2;i<=n;i++)x*=i;return x}
+function loop(now){const realDt=Math.min(.25,(now-lastFrame)/1000);lastFrame=now;state.stats.playSeconds+=realDt;produce(realDt);if(now-lastUi>120){renderHud();if(activeTab==='dimensions'&&now-lastUi>480){renderPrestige();renderDimensions()}if(activeTab==='tickspeed')renderTicks();if(activeTab==='stats'&&now-lastUi>1000)renderStats();lastUi=now}if(Math.floor(state.stats.playSeconds)%2===0)checkAchievements();requestAnimationFrame(loop)}
+function switchTab(name){activeTab=name;$$('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));$$('.pane').forEach(p=>p.classList.toggle('active',p.id==='pane-'+name));if(name==='stats')renderStats();if(name==='achievements')renderAchievements();window.scrollTo({top:0,behavior:'smooth'})}
+function toast(html){const n=document.createElement('div');n.className='toast';n.innerHTML=html;$('#toasts').appendChild(n);setTimeout(()=>{n.style.opacity='0';n.style.transform='translateY(8px)';setTimeout(()=>n.remove(),220)},2600)}
+function floatText(anchor,text){const r=anchor.getBoundingClientRect(),n=document.createElement('div');n.className='float-num';n.textContent=text;n.style.left=(r.left+r.width/2-12)+'px';n.style.top=(r.top-4)+'px';document.body.appendChild(n);setTimeout(()=>n.remove(),900)}
+function pulse(el){if(!el)return;el.classList.remove('pulse');void el.offsetWidth;el.classList.add('pulse')}
+function shake(el){if(!el)return;el.animate([{transform:'translateX(0)'},{transform:'translateX(-3px)'},{transform:'translateX(3px)'},{transform:'translateX(0)'}],{duration:180})}
+let audioCtx=null;function chime(freq){if(!sound)return;try{audioCtx=audioCtx||new(window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==='suspended')audioCtx.resume();const o=audioCtx.createOscillator(),g=audioCtx.createGain(),now=audioCtx.currentTime;o.type='sine';o.frequency.setValueAtTime(freq,now);o.frequency.exponentialRampToValueAtTime(freq*1.18,now+.12);g.gain.setValueAtTime(.045,now);g.gain.exponentialRampToValueAtTime(.001,now+.18);o.connect(g);g.connect(audioCtx.destination);o.start();o.stop(now+.18)}catch(e){}}
+function record(s){state.stats.history=state.stats.history||[];state.stats.history.push(s);if(state.stats.history.length>40)state.stats.history.shift()}
+function openModal(title,copy,summary,action){$('#modal-title').textContent=title;$('#modal-copy').textContent=copy;$('#modal-summary').textContent=summary;pendingAction=action;$('#modal-confirm').disabled=!action;$('#modal-confirm').textContent=action?'실행':'조건 미달';$('#modal').classList.add('open');$('#modal-cancel').focus()}
+function closeModal(){$('#modal').classList.remove('open');pendingAction=null}
+function serialize(){state.savedAt=Date.now();return JSON.stringify(state,null,2)}
+function exportSave(){const blob=new Blob([serialize()],{type:'application/json'}),a=document.createElement('a'),d=new Date();a.href=URL.createObjectURL(blob);a.download='cosmic-dimensions-'+d.toISOString().slice(0,10)+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000);toast('세이브 파일을 내려받았습니다.')}
+function revive(raw){const s=fresh(),num=(v,min=0,max=1e9)=>Math.min(max,Math.max(min,Number.isFinite(Number(v))?Number(v):min)),whole=(v,min=0,max=1e9)=>Math.floor(num(v,min,max));s.matter=new BigNum(raw.matter);s.ip=whole(raw.ip);s.shifts=whole(raw.shifts,0,4);s.boosts=whole(raw.boosts);s.galaxies=whole(raw.galaxies);s.infinities=whole(raw.infinities);s.tickspeedPurchased=whole(raw.tickspeedPurchased,0,10000);s.tickspeedCost=new BigNum(raw.tickspeedCost||new BigNum(1,3));s.dims=s.dims.map((b,i)=>{const d=raw.dims&&typeof raw.dims[i]==='object'?raw.dims[i]:{};b.amount=new BigNum(d.amount);b.bought=whole(d.bought,0,1000000);return b});s.infinityUpgrades=s.infinityUpgrades.map((b,i)=>{const src=raw.infinityUpgrades&&typeof raw.infinityUpgrades[i]==='object'?raw.infinityUpgrades[i]:{};b.bought=src.bought===true;return b});s.achievements=Array.from({length:24},(_,i)=>raw.achievements&&raw.achievements[i]===true);const rs=raw.stats&&typeof raw.stats==='object'?raw.stats:{};s.stats.playSeconds=num(rs.playSeconds,0,1e12);s.stats.totalMatter=new BigNum(rs.totalMatter||10);s.stats.totalPurchases=whole(rs.totalPurchases,0,1e12);s.stats.crunches=whole(rs.crunches,0,1e9);s.stats.history=Array.isArray(rs.history)?rs.history.slice(-40).filter(x=>typeof x==='string').map(x=>x.slice(0,120)):[];s.savedAt=num(raw.savedAt,0,Date.now());return s}
+function importFile(file){const reader=new FileReader();reader.onload=()=>{try{const raw=JSON.parse(reader.result);if(!raw||!raw.dims)throw new Error('invalid');state=revive(raw);const elapsed=Math.max(0,(Date.now()-(Number(raw.savedAt)||Date.now()))/1000);let gain=new BigNum(0);if(elapsed>1)gain=offlineProduce(elapsed);state.savedAt=Date.now();record('세이브 불러오기');renderAll();toast('세이브를 불러왔습니다.');if(elapsed>1)openModal('오프라인 진행','저장된 우주가 비활성 시간 동안 생산을 계속했습니다.','경과 '+formatTime(elapsed)+' · 획득 +'+format(gain)+' AM',()=>{})}catch(e){toast('올바른 세이브 파일이 아닙니다.')}};reader.readAsText(file)}
+function resetGame(){state=fresh();closeModal();renderAll();toast('새 우주가 시작되었습니다.')}
+function setupCanvas(){const c=$('#starfield'),x=c.getContext('2d'),reduced=matchMedia('(prefers-reduced-motion:reduce)').matches;if(reduced)return;let w,h,stars=[];function resize(){const d=Math.min(devicePixelRatio||1,2);w=innerWidth;h=innerHeight;c.width=w*d;c.height=h*d;c.style.width=w+'px';c.style.height=h+'px';x.setTransform(d,0,0,d,0,0);stars=Array.from({length:Math.min(110,Math.floor(w*h/9000))},()=>({x:Math.random()*w,y:Math.random()*h,r:Math.random()*1.15+.25,a:Math.random()*.55+.12,s:Math.random()*.06+.015}))}function draw(){x.clearRect(0,0,w,h);for(const s of stars){s.y+=s.s;if(s.y>h){s.y=0;s.x=Math.random()*w}x.fillStyle='rgba(111,220,245,'+s.a+')';x.beginPath();x.arc(s.x,s.y,s.r,0,Math.PI*2);x.fill()}requestAnimationFrame(draw)}addEventListener('resize',resize,{passive:true});resize();draw()}
+$$('.tab').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab));$$('.mode-btn').forEach(b=>b.onclick=()=>{buyMode=b.dataset.mode;$$('.mode-btn').forEach(x=>x.classList.toggle('active',x===b));renderDimensions()});$('#max-all').onclick=buyMaxAll;$('#buy-tick').onclick=buyTick;$('#export-save').onclick=exportSave;$('#import-save').onclick=()=>$('#save-file').click();$('#save-file').onchange=e=>{if(e.target.files[0])importFile(e.target.files[0]);e.target.value=''};$('#reset-save').onclick=()=>openModal('진행 초기화','현재 우주의 모든 진행을 삭제하고 처음부터 시작합니다. 이 작업은 되돌릴 수 없습니다.','반물질 10으로 재시작',resetGame);$('#modal-cancel').onclick=closeModal;$('#modal-confirm').onclick=()=>{const a=pendingAction;closeModal();if(a)a()};$('#modal').onclick=e=>{if(e.target===$('#modal'))closeModal()};
+function toggle(btn,key){btn.classList.toggle('on');btn.setAttribute('aria-checked',btn.classList.contains('on'));if(key==='sound')sound=btn.classList.contains('on');if(key==='popups')popups=btn.classList.contains('on');if(key==='notation'){compact=btn.classList.contains('on');renderAll()}}
+$('#sound-toggle').onclick=e=>toggle(e.currentTarget,'sound');$('#popup-toggle').onclick=e=>toggle(e.currentTarget,'popups');$('#notation-toggle').onclick=e=>toggle(e.currentTarget,'notation');
+addEventListener('keydown',e=>{if(e.key>='1'&&e.key<='8'&&!e.metaKey&&!e.ctrlKey)buyDimension(Number(e.key),buyMode);else if(e.code==='KeyM'&&!e.metaKey&&!e.ctrlKey)buyMaxAll();else if(e.key==='Escape')closeModal()});
+setupCanvas();renderAll();requestAnimationFrame(loop);toast('차원 네트워크가 안정화되었습니다.');
+})();
+</script>
+</body>
+</html>
