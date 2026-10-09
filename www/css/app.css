@@ -587,6 +587,8 @@ canvas.frame-ico { padding: 0; width: 40px; height: 40px; border-radius: 10px; }
 .fate-up { color: var(--green); font-size: .62rem; margin-left: 4px; }
 .infl { display: grid; grid-template-columns: 70px 1fr 90px; gap: 8px; align-items: center; margin: 6px 0; font-size: .74rem; }
 .infl b { font-family: var(--mono); text-align: right; font-size: .72rem; }
+.infl.sleep { opacity: .4; }
+.infl.sleep b { font-family: inherit; }
 .people { display: flex; flex-direction: column; gap: 4px; }
 .person { display: grid; grid-template-columns: 24px 1fr auto; gap: 8px; align-items: center; padding: 5px 8px; border-radius: 8px; background: rgba(0, 0, 0, .25); font-size: .74rem; }
 .person canvas { width: 24px; height: 30px; }

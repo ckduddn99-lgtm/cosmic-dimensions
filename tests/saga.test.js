@@ -58,25 +58,36 @@ test('영향력: 합이 1, 강한 성좌일수록 크고 몸값이 비싸다', (
   assert.ok(core.constNeed(s, 0).gt(core.constNeed(s, 1).div(1e10)), '몸값이 레벨 비용에 반영');
 });
 
+test('잠든 성좌는 영향력 0, 사건·강탈·전조에 엮이지 않는다', () => {
+  const s = world(1);
+  saga.ensureWorld(s, NOW);
+  const inf = saga.influence(s);
+  assert.equal(inf[0], 1);
+  for (let i = 1; i < 8; i++) assert.equal(inf[i], 0);
+  const F = id => SD.fates.find(f => f.id === id);
+  assert.equal(saga.fateReady(s, F('scorpion_hunt')), false, '전갈·백조가 잠든 사냥은 일어나지 않음');
+  assert.equal(saga.fateReady(s, F('star_war')), false, '성좌 4명 미만이면 성간 전쟁 없음');
+  for (let k = 0; k < 300; k++) saga.omen(s, NOW + k);
+  for (const e of s.saga.feed.filter(e => e.kind === 'omen' || e.kind === 'omen-big' || e.kind === 'voice')) assert.ok(e.c <= 0, e.text);
+  // 모든 성좌가 엮이는 사건이라도 깨어난 성좌만 가져간다
+  const out = saga.resolve(s, Object.assign({}, F('eclipse'), { effects: [] }), NOW);
+  assert.deepEqual(out.inv, [0]);
+  assert.ok(s.saga.feed.filter(e => e.kind === 'take').every(e => e.c === 0));
+});
+
 test('운명 사건: 엮인 성좌가 많고 영향력이 클수록 많이 가져간다', () => {
   assert.ok(saga.takeFraction(1, 0.1) < saga.takeFraction(3, 0.3));
   assert.ok(saga.takeFraction(3, 0.2) < saga.takeFraction(3, 0.6));
   assert.equal(saga.takeFraction(8, 1), 0.6);
-  const s = world(2);
+  const s = world(1);
+  for (const i of [5, 6]) { s.constellations[i].apostleFound = true; s.apostles[i].awake = true; }
   const f = SD.fates.find(x => x.id === 'blood_festival');
   const before = new BigNum(s.matter);
   const out = saga.resolve(s, f, NOW);
   assert.ok(s.matter.lt(before));
   assert.ok(out.taken.gt(0));
   assert.ok(s.saga.feed.filter(e => e.kind === 'take').length === 3);
-  assert.ok(!s.saga.power[5].isZero(), '잠든 성좌도 몫을 챙긴다');
-});
-
-test('빼앗긴 반물질로 잠든 성좌가 스스로 깨어날 수 있다', () => {
-  const s = world(1);
-  s.matter = new BigNum(1, 300);
-  saga.resolve(s, SD.fates.find(x => x.id === 'star_war'), NOW);
-  assert.ok(s.constellations.filter(c => c.apostleFound).length > 1);
+  assert.ok(!s.saga.power[5].isZero(), '엮인 성좌가 각자 몫을 챙긴다');
 });
 
 test('타락: 부패도 100이면 타락하고 반란 긴장도가 오른다', () => {

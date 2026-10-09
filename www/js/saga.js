@@ -58,6 +58,7 @@
     core().emitSaga(kind, { text, c, ...extra });
   }
 
+  const FATE = Object.fromEntries(SD.fates.map(f => [f.id, f]));
   const awake = (s, i) => s.constellations[i].apostleFound;
   const person = (s, id) => (id ? s.saga.people.find(p => p.id === id) || null : null);
   const apostleOf = (s, i) => { const p = person(s, s.saga.patrons[i]); return p && p.status === 'apostle' ? p : null; };
@@ -135,16 +136,16 @@
 
   /* ───────────── 영향력 · 몸값 ───────────── */
 
-  // 성좌 레벨, 성력, 사도 레벨, 명성으로 점수를 매겨 합이 1이 되도록 나눈다
+  // 깨어난 성좌끼리 성좌 레벨, 성력, 사도 레벨, 명성으로 점수를 매겨 합이 1이 되도록 나눈다 (잠든 성좌는 0)
   function influence(s) {
     const g = s.saga;
     const score = s.constellations.map((c, i) => {
-      if (!c.apostleFound) return 0.5;
+      if (!c.apostleFound) return 0;
       const ap = apostleOf(s, i);
       return 3 + c.level * 2 + Math.max(0, g.power[i].log10()) * 0.08 + (ap ? ap.lvl * 0.35 : 0) + Math.max(0, g.fame[i]) * 0.25;
     });
     const sum = score.reduce((a, b) => a + b, 0);
-    return score.map(v => v / sum);
+    return score.map(v => (sum ? v / sum : 0));
   }
   /** 몸값: 영향력이 평균(12.5%)이면 ×1, 클수록 비싸다 */
   function priceMult(s, i) { return 0.5 + 4 * influence(s)[i]; }
@@ -298,8 +299,9 @@
   const L0 = logistic(0);
   function prob(t) { return P_BASE + (P_MAX - P_BASE) * Math.max(0, (logistic(Math.max(0, t)) - L0) / (1 - L0)); }
 
+  // 사건에 실제로 엮이는 건 깨어난 성좌뿐이다
   function involvedOf(s, f) {
-    if (f.involve === 'all') return [0, 1, 2, 3, 4, 5, 6, 7];
+    if (f.involve === 'all') return [0, 1, 2, 3, 4, 5, 6, 7].filter(i => awake(s, i));
     if (f.involve === 'one') { const c = livingApostles(s).map(p => p.patron); return c.length ? [pick(c)] : []; }
     return f.involve.slice();
   }
@@ -307,6 +309,8 @@
   function fateReady(s, f) {
     const inv = f.involve === 'one' ? livingApostles(s).map(p => p.patron) : involvedOf(s, f);
     const awakeN = inv.filter(i => awake(s, i)).length;
+    // 이름이 박힌 사건은 그 성좌들이 모두 깨어 있어야 일어난다
+    if (Array.isArray(f.involve) && awakeN < f.involve.length) return false;
     if (awakeN < (f.minInvolved || 1)) return false;
     if (f.need === 'fallen' && !fallen(s).length) return false;
     if (f.involve === 'one' && !inv.length) return false;
@@ -317,11 +321,12 @@
     if (o.c >= 0 && !awake(s, o.c)) return false;
     // 단계형 빌드업: 앞 단계 전조로 긴장도가 충분히 쌓여야 다음 단계 전조가 등장한다
     if (o.min) for (const id in o.min) if ((s.saga.tension[id] || 0) < o.min[id]) return false;
-    if (o.need === 'apostle') return livingApostles(s).length > 0;
-    if (o.need === 'two') return livingApostles(s).length > 1;
-    if (o.need === 'corrupt') return livingApostles(s).some(p => p.corrupt >= 30);
-    if (o.need === 'fallen') return fallen(s).length > 0;
-    return s.constellations.some(c => c.apostleFound);
+    if (o.need === 'apostle' && !livingApostles(s).length) return false;
+    if (o.need === 'two' && livingApostles(s).length < 2) return false;
+    if (o.need === 'corrupt' && !livingApostles(s).some(p => p.corrupt >= 30)) return false;
+    if (o.need === 'fallen' && !fallen(s).length) return false;
+    // 아직 일어날 수 없는 사건(엮인 성좌가 잠들어 있음)의 전조는 나오지 않는다
+    return Object.keys(o.add).some(id => { const f = FATE[id]; return f && fateReady(s, f); });
   }
 
   function omen(s, now) {
@@ -347,7 +352,7 @@
       if (o.fx.xp) { target.xp += o.fx.xp; levelUp(s, target, now); }
       if (o.fx.hp) target.hp = Math.max(1, target.hp + Math.round(target.maxHp * o.fx.hp / 100));
     }
-    for (const id in o.add) s.saga.tension[id] = (s.saga.tension[id] || 0) + o.add[id];
+    for (const id in o.add) if (FATE[id] && fateReady(s, FATE[id])) s.saga.tension[id] = (s.saga.tension[id] || 0) + o.add[id];
     s.saga.stats.omens++;
     const top = Object.keys(o.add).sort((a, b) => o.add[b] - o.add[a])[0];
     feed(s, o.big ? 'omen-big' : 'omen', text, o.c >= 0 ? o.c : (target ? target.patron : -1), now, { fate: top, big: !!o.big, a: target ? target.id : undefined });
@@ -391,8 +396,8 @@
     const out = { id: f.id, inv, taken, frac, lines: [] };
     for (const e of f.effects) applyEffect(s, f, e, inv, now, out);
     // 사건은 다른 사건을 부른다
-    const others = SD.fates.filter(x => x.id !== f.id);
-    const o = pick(others); s.saga.tension[o.id] += 3 + Math.floor(rnd() * 6);
+    const others = SD.fates.filter(x => x.id !== f.id && fateReady(s, x));
+    if (others.length) { const o = pick(others); s.saga.tension[o.id] += 3 + Math.floor(rnd() * 6); }
     core().emitSaga('fateDone', out);
     return out;
   }

@@ -928,8 +928,8 @@
     setText($('#sanct-lv'), awake ? 'Lv.' + c.level + ' / 10' : '잠듦');
     setText($('#sanct-name'), PX.SANCT[i].name);
     statRows($('#sanct-stats'), [
-      ['영향력', (inf[i] * 100).toFixed(1) + '%', true],
-      ['몸값 (후원 비용 배율)', '×' + SG.priceMult(S, i).toFixed(2)],
+      ['영향력', awake ? (inf[i] * 100).toFixed(1) + '%' : '잠듦 (사건에 엮이지 않음)', true],
+      ['몸값 (후원 비용 배율)', awake ? '×' + SG.priceMult(S, i).toFixed(2) : '—'],
       ['성력 (성좌의 재화)', fmt(g.power[i])],
       ['명성', Math.round(g.fame[i])],
       ['축복', def.desc + (awake ? ' · 현재 +' + Math.round(C.constBonus(S, i) * 100) + '%' : '')]
@@ -978,6 +978,17 @@
   }
 
   function fmtP(p) { return p < 0.001 ? (p * 100).toFixed(2) + '%' : p < 0.1 ? (p * 100).toFixed(2) + '%' : (p * 100).toFixed(1) + '%'; }
+  // 운명 사건이 아직 일어날 수 없는 이유
+  function fateBlock(f) {
+    const awakeN = S.constellations.filter(c => c.apostleFound).length;
+    if (Array.isArray(f.involve)) {
+      const sleep = f.involve.filter(i => !S.constellations[i].apostleFound);
+      if (sleep.length) return sleep.map(i => D.constellations[i].name).join('·') + ' 잠듦';
+    } else if (f.involve === 'all' && awakeN < (f.minInvolved || 1)) return '성좌 ' + f.minInvolved + '명 이상 깨어나야 함';
+    else if (f.involve === 'one' && !SG.livingApostles(S).length) return '사도 필요';
+    if (f.need === 'fallen') return '타락한 자 필요';
+    return '조건 미충족';
+  }
   function updateFates(inf) {
     const g = S.saga, nowP = performance.now();
     const order = SDX.fates.slice().sort((a, b) => (SG.fateReady(S, b) - SG.fateReady(S, a)) || (g.tension[b.id] - g.tension[a.id]));
@@ -991,11 +1002,17 @@
       cls(r.el, 'off', !ready); cls(r.el, 'hot', ready && p >= 0.3); cls(r.el, 'warm', ready && p >= 0.05 && p < 0.3);
       width(r.fill, p / 0.7 * 100);
       setText(r.p, fmtP(p));
-      setText(r.note, !ready ? '조건 미충족' : g.stats.seen[f.id] ? g.stats.seen[f.id] + '회 발생' : '긴장도 ' + Math.round(t));
+      setText(r.note, !ready ? fateBlock(f) : g.stats.seen[f.id] ? g.stats.seen[f.id] + '회 발생' : '긴장도 ' + Math.round(t));
     });
     const il = $('#influence-list');
     if (!il._built) { il._built = true; il.innerHTML = D.constellations.map(c => '<div class="infl"><span>' + esc(c.name) + '</span><span class="rail-bar gold"><span class="rail-bar-in"></span></span><b></b></div>').join(''); }
-    Array.from(il.children).forEach((row, i) => { width(row.querySelector('.rail-bar-in'), inf[i] / Math.max(...inf) * 100); setText(row.querySelector('b'), (inf[i] * 100).toFixed(1) + '% · ×' + SG.priceMult(S, i).toFixed(2)); });
+    const infMax = Math.max(...inf) || 1;
+    Array.from(il.children).forEach((row, i) => {
+      const awake = S.constellations[i].apostleFound;
+      cls(row, 'sleep', !awake);
+      width(row.querySelector('.rail-bar-in'), inf[i] / infMax * 100);
+      setText(row.querySelector('b'), awake ? (inf[i] * 100).toFixed(1) + '% · ×' + SG.priceMult(S, i).toFixed(2) : '잠듦');
+    });
     renderFeed($('#global-feed'), g.feed.slice(-40));
   }
 
