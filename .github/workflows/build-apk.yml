@@ -25,6 +25,13 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      # 앱을 업데이트해도 WebView가 예전 JS/CSS를 쓰지 않도록 빌드마다 주소를 바꾸고, 설정 화면에 빌드 번호를 표시한다
+      - name: Stamp build
+        run: |
+          TAG="${GITHUB_RUN_NUMBER}-${GITHUB_SHA::7}"
+          sed -i -e "s/?v=dev/?v=${TAG}/g" -e "s#<span id=\"build-tag\">dev</span>#<span id=\"build-tag\">${TAG}</span>#" www/index.html
+          grep -c "?v=${TAG}" www/index.html
+
       - name: Add Android platform
         run: |
           npm install @capacitor/core @capacitor/cli @capacitor/android
