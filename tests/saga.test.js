@@ -48,6 +48,26 @@ test('성좌가 세계의 인물 중 사도를 고른다', () => {
   assert.ok(s.saga.feed.some(f => f.kind === 'pick'));
 });
 
+test('리라만 깨어 있어도 단독 전조가 쌓이고 독주회가 열린다', () => {
+  const s = world(0);
+  s.constellations[1].apostleFound = true;
+  s.apostles[1].awake = true;
+  saga.ensureWorld(s, NOW);
+  const hymn = SD.fates.find(f => f.id === 'lyra_celestial_hymn');
+  const recital = SD.fates.find(f => f.id === 'lyra_solo_recital');
+  assert.equal(saga.fateReady(s, hymn), true);
+  assert.equal(saga.fateReady(s, recital), true);
+  assert.equal(saga.fateReady(s, SD.fates.find(f => f.id === 'concert')), false);
+  for (let k = 0; k < 500; k++) saga.omen(s, NOW + k);
+  assert.ok(s.saga.tension.lyra_celestial_hymn > 0);
+  assert.ok(s.saga.tension.lyra_solo_recital > 0);
+  assert.ok(s.saga.feed.some(e => e.kind === 'omen' && e.c === 1));
+  const out = saga.resolve(s, recital, NOW + 1000);
+  assert.deepEqual(out.inv, [1]);
+  assert.equal(s.saga.buff.mult, 6);
+  assert.equal(s.saga.buff.endsAt, NOW + 1000 + 15 * 60000);
+});
+
 test('영향력: 합이 1, 강한 성좌일수록 크고 몸값이 비싸다', () => {
   const s = world(3);
   s.constellations[0].level = 8; s.saga.fame[0] = 100;
