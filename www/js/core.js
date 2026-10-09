@@ -21,6 +21,13 @@
   const rt = { autoAcc: 0, slowAcc: 0, buffNotified: 0 };
 
   function emit(type, payload) { if (listener) listener(type, payload || {}); }
+  const saga = () => CD.saga || null;
+  /** 서사 메시지용 짧은 숫자 표기 (화면 설정과 무관하게 저장된다) */
+  function fmtShort(v) {
+    v = big(v);
+    if (!v.m) return '0';
+    return v.e < 6 ? Math.floor(v.toNumber()).toLocaleString('ko-KR') : v.m.toFixed(2) + 'e' + v.e;
+  }
   function pick(arr) { return arr[Math.floor(rng() * arr.length)]; }
   function count(arr) { let n = 0; for (const v of arr) if (v) n++; return n; }
   function big(v) { return v instanceof BigNum ? v : new BigNum(v); }
@@ -55,6 +62,7 @@
       comet: { boostEndsAt: 0 },
       tap: { combo: 0, lastAt: 0 },
       daily: { lastDay: '', streak: 0 },
+      saga: saga() ? saga().fresh(now) : null,
       stats: {
         startedAt: now, playSeconds: 0, totalMatter: new BigNum(10), totalPurchases: 0, crunches: 0,
         taps: 0, comets: 0, goldenComets: 0, sacrifices: 0, bestIp: 0, totalIp: 0, maxCombo: 0, longestOffline: 0, bestStreak: 0,
@@ -127,6 +135,7 @@
     if (hasUpg(s, 3)) k *= 1 + s.infinities;
     if (buffActive(s, now)) k *= buffPower(s);
     if (eventActive(s, 'storm', now)) k *= 3;
+    if (saga() && s.saga) k *= saga().prodMult(s, now);
     return BigNum.pow(boostBase(s), s.boosts).mul(k);
   }
 
@@ -432,7 +441,8 @@
   function constSearchNeed(i) { return new BigNum(1, constSearchExp(i)); }
   function constLevelNeed(s, i) {
     const disc = Math.max(0.5, 1 - constBonus(s, 7));
-    return new BigNum(1, constSearchExp(i) + (s.constellations[i].level + 1) * (4 + 3 * i)).mul(disc);
+    const price = saga() && s.saga ? saga().priceMult(s, i) : 1;
+    return new BigNum(1, constSearchExp(i) + (s.constellations[i].level + 1) * (4 + 3 * i)).mul(disc * price);
   }
   function constNeed(s, i) {
     const c = s.constellations[i];
@@ -456,11 +466,23 @@
   }
 
   function invest(s, i, amount, now = Date.now()) {
-    const c = s.constellations[i];
     if (!constNeed(s, i)) return { ok: false, reason: 'max' };
     amount = BigNum.min(s.matter, amount);
     if (amount.isZero()) return { ok: false, reason: 'poor' };
     s.matter = s.matter.sub(amount);
+    if (saga() && s.saga) {
+      saga().offer(s, i, amount, now);
+      // 한 성좌만 편애하면 다른 성좌들이 질투한다
+      s.saga.tension.crown_war += 1.5; s.saga.tension.star_war += 1;
+    }
+    absorb(s, i, amount, now);
+    return { ok: true };
+  }
+
+  /** 성좌가 받은 반물질로 각성·후원 레벨을 올린다 (플레이어 공물이든 사건 중 강탈이든) */
+  function absorb(s, i, amount, now = Date.now()) {
+    const c = s.constellations[i];
+    if (!constNeed(s, i)) return;
     c.invested = c.invested.add(amount);
     let need;
     while ((need = constNeed(s, i)) && reached(c.invested, need)) {
@@ -471,7 +493,7 @@
         a.awake = true;
         a.lastRevelation = now;
         apostleLog(s, i, makeDialogue(i, 'greeting'), now);
-        record(s, '사도 발견 · ' + D.apostles[i].name);
+        record(s, '성좌 각성 · ' + D.constellations[i].name);
         emit('apostleFound', { i });
       } else {
         c.level++;
@@ -483,7 +505,6 @@
       }
     }
     if (!constNeed(s, i)) c.invested = new BigNum(0);
-    return { ok: true };
   }
 
   function skillCost(s, i, j) { return new BigNum(1, constSearchExp(i) + 2 + (3 + i) * s.apostles[i].skills[j]); }
@@ -598,14 +619,17 @@
 
   const SECRET = [
     { name: '첫 과충전', desc: '과충전 1회 사용', check: s => s.buff.used },
-    { name: '성좌 관측자', desc: '사도 1명 발견', check: s => s.constellations.some(c => c.apostleFound) },
+    { name: '성좌 관측자', desc: '성좌 1개 각성', check: s => s.constellations.some(c => c.apostleFound) },
     { name: '도전자', desc: '도전 1개 완료', check: s => s.challenges.some(Boolean) },
     { name: '마스터', desc: '마스터리 레벨 합계 10', check: s => s.mastery.reduce((a, m) => a + m.level, 0) >= 10 },
     { name: '끈기', desc: '누적 1시간 플레이', check: s => s.stats.playSeconds >= 3600 },
-    { name: '완벽한 조화', desc: '8개 성좌 모두에서 사도 발견', check: s => s.constellations.every(c => c.apostleFound) },
+    { name: '완벽한 조화', desc: '8개 성좌 모두 각성', check: s => s.constellations.every(c => c.apostleFound) },
     { name: '황금빛 행운', desc: '황금 혜성 포착', check: s => s.stats.goldenComets >= 1 },
     { name: '연타의 신', desc: '콤보 50 달성', check: s => s.stats.maxCombo >= COMBO_MAX },
-    { name: '희생의 대가', desc: '차원 희생 배율 ×10 달성', check: s => sacMult(s) >= 10 }
+    { name: '희생의 대가', desc: '차원 희생 배율 ×10 달성', check: s => sacMult(s) >= 10 },
+    { name: '타락의 목격자', desc: '사도의 타락을 목격', check: s => !!s.saga && s.saga.stats.falls >= 1 },
+    { name: '운명의 관찰자', desc: '운명 사건 10회 목격', check: s => !!s.saga && s.saga.stats.fates >= 10 },
+    { name: '성좌 대전', desc: '성좌 대전에서 살아남기', check: s => !!s.saga && !!s.saga.stats.seen.star_war }
   ];
 
   function checkAchievements(s) {
@@ -702,6 +726,7 @@
       updateRevelations(s, now);
       checkAchievements(s);
     }
+    if (saga() && s.saga) saga().update(s, dt, now);
   }
 
   /** 상수 배율 가정 하의 정확한 해 (차원 사슬의 다항식 성장). 생산된 반물질 양을 돌려준다. */
@@ -732,9 +757,10 @@
     addMatter(s, gain);
     gainMastery(s, used);
     s.stats.longestOffline = Math.max(s.stats.longestOffline, used);
+    const sagaSummary = saga() && s.saga ? saga().offline(s, used, now === NO_TIMED ? Date.now() : now) : null;
     checkChallenge(s);
     checkAchievements(s);
-    return { seconds: used, gain, capped: seconds > OFFLINE_CAP };
+    return { seconds: used, gain, capped: seconds > OFFLINE_CAP, saga: sagaSummary };
   }
 
   /* ───────────── 저장 · 불러오기 ───────────── */
@@ -837,6 +863,7 @@
     if (!rs.totalIp && s.infinities) st.totalIp = s.infinities;
     st.history = Array.isArray(rs.history) ? rs.history.map(h => str(h, 120)).filter(Boolean).slice(-40) : [];
     s.savedAt = num(raw.savedAt, 0, now) || now;
+    if (saga()) s.saga = saga().revive(raw.saga, now);
     return s;
   }
 
@@ -856,7 +883,10 @@
     constSearchNeed, constNeed, constRemaining, invest, skillCost, canFundSkill, fundSkill, revelationInterval,
     researchCost, researchOpen, canResearch, buyResearch, canUpgrade, buyUpgrade,
     checkAchievements, nextGoal, masteryNeed,
-    tick, advanceExact, offline, big
+    tick, advanceExact, offline, big, fmtShort, absorb,
+    random: () => rng(),
+    emitSaga: (kind, payload) => emit('saga', Object.assign({ kind }, payload)),
+    giveMatter: (s, gain) => addMatter(s, gain)
   };
   if (typeof module === 'object' && module.exports) module.exports = CD.core;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
