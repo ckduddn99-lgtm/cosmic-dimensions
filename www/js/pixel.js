@@ -1,5 +1,5 @@
 /* 초공간 차원 붕괴 — 도트(픽셀아트) 렌더러
- * 모든 그림은 코드로 한 칸씩 찍는다. 저해상도 캔버스에 그린 뒤 CSS로 확대(image-rendering: pixelated)한다.
+ * 성소는 아이소메트릭 맵 위에 도트 인물과 효과를 그린다. 모험 장면은 저해상도 캔버스를 확대한다.
  */
 (function (root) {
   'use strict';
@@ -30,7 +30,7 @@
       if (!col) return;
       ctx.fillStyle = col;
       const xx = flip ? w - x - ww : x;
-      ctx.fillRect(Math.round(ox + xx * unit), Math.round(oy + y * unit), ww * unit, hh * unit);
+      ctx.fillRect(Math.round(ox + xx * unit), Math.round(oy + y * unit), Math.max(1, Math.round(ww * unit)), Math.max(1, Math.round(hh * unit)));
     };
   }
 
@@ -173,6 +173,58 @@
     else { const k = f % 2; px(3, 12, 2, 2 + k, d); px(7, 12, 2, 2 - k, d); px(10, 12, 2, 2 + k, d); px(12, 12, 2, 2 - k, d); }
   }
 
+  /* 성좌 전용 32×48 도트: 사도보다 세밀한 의상·장비·실루엣 */
+  function drawConstellation(c, i, x, y, pose = 'idle', f = 0, flip = false, unit = 1) {
+    const L = AVATARS[i], px = brush(c, x, y - 48 * unit, unit, flip, 32);
+    const dark = '#131426', gold = '#e6b96b', light = '#fff0c8';
+    const moving = pose === 'walk', step = moving ? (f % 4 < 2 ? 1 : -1) : 0;
+    if (i === 3) {
+      // 천마: 겹겹의 깃털, 은빛 갈기, 황금 굴레와 네 다리
+      px(7,28,18,9,'#94aac9');px(8,27,16,7,'#e0ebf3');px(20,18,7,13,'#c1d5e8');px(23,15,7,9,'#edf5fa');px(28,19,4,4,'#bbd1e3');px(26,14,2,4,gold);px(28,18,1,1,dark);
+      for (let k=0;k<6;k++){px(6+k*2,13+k*2,3,15-k,'#627da9');px(5+k*2,11+k*2,2,15-k,'#e6eff9');px(5+k*2,11+k*2,1,8,'#fff8e4');}
+      for (let k=0;k<4;k++){px(23-k,15+k*3,2,6,'#6ca7d1');px(22-k,15+k*3,1,4,'#c2f2ff');}
+      px(3,29,4,10,'#7ab2d7');px(2,31,2,9,'#daeaff');
+      for (const [k,xx] of [9,13,21,25].entries()){px(xx,35,2,9+(k%2?step:-step),'#acbfd8');px(xx,44+(k%2?step:-step),3,3,gold);}
+      px(21,24,7,1,gold);px(22,27,5,1,gold);px(14,30,6,2,'#658dbc');px(16,29,1,5,gold);return;
+    }
+    if (i === 6) {
+      // 큰곰: 층진 털, 별빛 문양과 북극성 왕관
+      px(5,20,23,22,'#4b352b');px(7,19,19,19,'#80563a');px(9,11,17,14,'#aa7b4d');px(8,10,5,6,'#50372e');px(23,10,5,6,'#50372e');px(10,11,2,3,'#c09161');px(24,11,2,3,'#c09161');
+      px(12,14,13,8,'#be9867');px(20,18,7,6,'#dfbe83');px(25,19,3,2,dark);px(21,16,2,2,dark);px(21,16,1,1,light);px(11,28,12,10,'#ba8e5e');
+      for(let k=0;k<8;k++){px(7+(k*7%18),22+(k*5%16),2,2,k%2?'#956b48':'#62442e');}
+      px(5,40,8,7+step,'#50382d');px(22,40,8,7-step,'#50382d');px(6,46+step,6,1,'#dec397');px(23,46-step,6,1,'#dec397');
+      px(11,9,14,2,gold);px(14,7,2,3,gold);px(20,6,2,4,gold);px(17,4,2,5,light);px(15,6,6,1,light);px(15,28,6,1,light);px(17,26,2,5,light);return;
+    }
+    const cloth=L.cloth, mid=shade(cloth,1.35), dk=shade(cloth,.55), skin=L.skin;
+    // 상체와 옷의 어두운 외곽선, 바람에 흔들리는 망토
+    const cape=i===0?'#203b34':i===2?'#551d36':i===4?'#667fa8':dk;
+    px(8,22,17,21,dark);px(6,24,3,19,cape);px(24,24,3,19,cape);px(5+step,38,4,7,cape);
+    px(10,39,5,8+step,L.boots);px(19,39,5,8-step,L.boots);px(10,46+step,6,2,gold);px(19,46-step,6,2,gold);
+    for(let yy=23;yy<42;yy++){const half=yy>31?9:7;px(17-half,yy,half*2,1,cloth);px(17-half,yy,2,1,dk);px(20,yy,2,1,mid);}
+    px(14,23,6,2,light);px(16,26,2,13,gold);px(9,31,16,2,gold);px(15,31,4,2,light);
+    for(let k=0;k<4;k++){px(10+k*4,37,1,4,mid);px(10+k*4,42,2,1,gold);}
+    // 얼굴: 입체적인 머리칼과 작은 눈·코·빛 반사
+    px(10,7,14,16,dark);px(11,6,12,14,L.hair);px(12,11,10,10,skin);px(12,19,10,2,shade(skin,.8));px(13,14,2,2,dark);px(20,14,2,2,dark);px(13,14,1,1,'#ffffff');px(20,14,1,1,'#ffffff');px(17,16,1,2,shade(skin,.8));px(16,19,3,1,'#9b6166');
+    px(11,7,12,3,L.hair);px(11,10,3,4,L.hair);px(20,10,3,3,L.hair);px(13,7,3,1,shade(L.hair,1.5));
+    if(L.longHair){for(const xx of [9,23]){px(xx,12,3,17,L.hair);px(xx+1,15,1,11,shade(L.hair,1.3));}}
+    px(7,25,3,9+step,mid);px(25,25,3,9-step,dk);px(7,33+step,3,3,skin);px(25,33-step,3,3,skin);
+    if(i===0){ // 꼬챙이 활, 화살통, 잎사귀 후드
+      px(9,6,16,4,'#31523c');px(9,10,3,8,'#31523c');px(22,10,3,8,'#31523c');px(12,5,9,1,'#729269');px(24,19,3,12,'#765636');for(let k=0;k<3;k++){px(24+k,14-k,1,8,'#c9ad77');px(24+k,13-k,1,2,'#e9e3c9');}
+      for(let yy=18;yy<43;yy++){const xx=3+Math.round(Math.sin((yy-18)/25*Math.PI)*4);px(xx,yy,2,1,gold);}px(4,20,1,21,'#e7dec1');px(1,30,12,1,'#bfcbd9');
+    }else if(i===1){ // 금장 하프와 별빛 머리장식
+      px(10,8,13,1,gold);px(19,6,2,4,light);px(17,7,6,1,light);px(23,25,2,20,gold);px(30,23,2,22,gold);px(23,23,8,2,light);px(23,44,9,2,gold);for(let xx=26;xx<30;xx++)px(xx,26,1,16,'#faf0ca');px(9,28,2,2,light);
+    }else if(i===2){ // 루비 왕관, 보석 홀, 비단 망토
+      px(10,6,14,3,gold);for(const xx of [11,16,21]){px(xx,2,2,5,gold);px(xx,2,1,2,'#ef6983');}px(16,7,2,2,'#fff0c8');px(28,20,2,27,gold);px(26,19,6,5,'#c93c64');px(28,18,2,2,light);px(25,39,2,4,gold);
+    }else if(i===4){ // 백조의 깃털 어깨와 빙결 지팡이
+      for(let k=0;k<4;k++){px(5+k,20+k,2,7-k,'#e7f7ff');px(26-k,20+k,2,7-k,'#d1e4ff');}px(29,21,1,26,'#a6c7e0');px(27,18,5,4,'#8edbed');px(29,16,1,6,'#f1ffff');px(10,8,13,1,'#c8ecff');
+    }else if(i===5){ // 붉은 판금, 검, 분절된 전갈 꼬리
+      px(11,7,13,5,'#79505b');px(16,12,2,4,gold);px(9,25,5,7,'#93616b');px(21,25,5,7,'#93616b');px(13,26,8,5,'#bd7c78');px(2,21,2,20,'#d4dbe2');px(1,37,5,2,gold);px(2,40,2,5,'#67432e');for(let k=0;k<5;k++){px(27+k%3,38-k*4,3,3,'#a35447');px(28+k%3,38-k*4,1,1,gold);}px(29,17,2,3,'#ffb566');
+    }else if(i===7){ // 수정 왕녀, 끊어진 사슬과 심연의 보주
+      px(11,7,12,1,'#d2d0eb');px(16,4,2,5,'#b78de7');px(15,5,4,1,light);for(let k=0;k<4;k++){px(5+k%2,29+k*4,3,2,'#a5a4ce');px(6+k%2,29+k*4,1,1,dark);}px(26,27,6,6,'#8c62c6');px(27,26,4,1,'#d7acff');px(28,28,2,2,'#f0d7ff');px(27,33,4,1,'#4d377b');
+    }
+    if(pose==='cast'){px(15,0,4,1,light);px(16,-2,1,5,light);}else if(pose==='attack')px(0,28,5,1,'#ffcf91');
+  }
+
   /* ───────────── 몬스터 ───────────── */
 
   function drawMonster(ctx, id, x, y, f, flip, unit, hurt) {
@@ -206,16 +258,18 @@
 
   // 성좌별 성소: 배경(정적) + 장식(움직임) + 이동 범위와 앉을 자리
   const SANCT = [
-    { name: '사냥꾼의 숲', sky: ['#050a18', '#14304a'], floor: '#1f3a22', walk: [24, 150], seat: { x: 112, y: 92, pose: 'sit' } },
+    { name: '은빛 사냥꾼의 설원', sky: ['#050a18', '#14304a'], floor: '#1f3a22', walk: [24, 150], seat: { x: 112, y: 92, pose: 'sit' } },
     { name: '별빛 음악당', sky: ['#0a0c24', '#1c2a5a'], floor: '#d8dcec', walk: [30, 160], seat: { x: 88, y: 92, pose: 'sit' } },
     { name: '오만의 왕좌', sky: ['#14060c', '#3a0e1c'], floor: '#4a1a24', walk: [30, 160], seat: { x: 88, y: 80, pose: 'sit' } },
     { name: '구름 위의 고원', sky: ['#2a3a7a', '#f0b88a'], floor: '#ffffff', walk: [20, 150], fly: true },
     { name: '얼어붙은 호수', sky: ['#060c1c', '#1c3a5e'], floor: '#bcd4ee', walk: [24, 160], seat: { x: 140, y: 92, pose: 'kneel' } },
     { name: '피의 투기장', sky: ['#1a0608', '#7a2a1a'], floor: '#b07440', walk: [26, 160] },
-    { name: '북극성 관측소', sky: ['#020814', '#0c2440'], floor: '#e4eef8', walk: [30, 150], seat: { x: 120, y: 94, pose: 'sit' } },
-    { name: '사슬의 꿈 정원', sky: ['#05020e', '#2a0c46'], floor: '#3a2a5a', walk: [30, 160], float: true }
+    { name: '북극성의 고대 요람', sky: ['#020814', '#0c2440'], floor: '#e4eef8', walk: [30, 150], seat: { x: 120, y: 94, pose: 'sit' } },
+    { name: '심연의 사슬 성소', sky: ['#05020e', '#2a0c46'], floor: '#3a2a5a', walk: [30, 160], float: true }
   ];
   const W = 192, H = 108, GROUND = 96;
+  const MAP_IDS = ['orion', 'lyra', 'cassiopeia', 'pegasus', 'cygnus', 'scorpio', 'ursa', 'andromeda'];
+  const MAP_H = 128;
 
   function gradient(c, top, bottom, h) {
     const g = c.createLinearGradient(0, 0, 0, h);
@@ -318,6 +372,7 @@
       canvas.width = W; canvas.height = H;
       this.ctx.imageSmoothingEnabled = false;
       this.bgs = {}; this.i = -1; this.parts = []; this.visitor = null;
+      this.maps = {};
     }
     set(i, awake) {
       if (this.i === i && this.awake === awake) return;
@@ -325,10 +380,20 @@
       const S = SANCT[i];
       this.av = { x: (S.walk[0] + S.walk[1]) / 2, tx: 0, mode: 'idle', until: 0, flip: false, f: 0, y: GROUND + 2 };
       this.parts = [];
+      this.mapWalk = { x: 80, y: 68, target: 0.5, progress: 0.25, until: 0, last: null };
+      // 선택한 맵만 읽고, 실패하면 기존 코드 배경을 계속 사용한다.
+      if (!this.maps[i]) {
+        const image = new Image();
+        this.maps[i] = image;
+        image.src = 'img/sanctuaries/' + MAP_IDS[i] + '.webp';
+      }
     }
     get name() { return SANCT[this.i].name; }
     /** 말풍선 위치(캔버스 대비 %) */
-    anchor() { return { x: (this.av.x + 8) / W * 100, y: (this.av.y - (AVATARS[this.i].horse || AVATARS[this.i].bear ? 34 : 42)) / H * 100 }; }
+    anchor() {
+      if (this.mapActive) return { x: (this.mapWalk.x + 6) / W * 100, y: (this.mapWalk.y - 28) / MAP_H * 100 };
+      return { x: (this.av.x + 8) / W * 100, y: (this.av.y - (AVATARS[this.i].horse || AVATARS[this.i].bear ? 34 : 42)) / H * 100 };
+    }
     react(kind) { this.av.mode = kind === 'angry' ? 'angry' : 'cheer'; this.av.until = performance.now() + 1800; }
     setVisitor(p) { this.visitor = p; }
 
@@ -351,6 +416,15 @@
 
     render(t) {
       if (this.i < 0) return;
+      const image = this.maps[this.i];
+      this.mapActive = !!(image && image.complete && image.naturalWidth);
+      const width = this.mapActive ? 768 : W, height = this.mapActive ? 512 : H;
+      if (this.cv.width !== width || this.cv.height !== height) {
+        this.cv.width = width; this.cv.height = height;
+        this.ctx.imageSmoothingEnabled = false;
+      }
+      this.cv.style.aspectRatio = this.mapActive ? '3 / 2' : '192 / 108';
+      if (this.mapActive) return this.renderMap(t, image);
       const c = this.ctx, i = this.i, S = SANCT[i], L = AVATARS[i];
       if (!this.bgs[i]) this.bgs[i] = buildBackground(i);
       c.drawImage(this.bgs[i], 0, 0);
@@ -371,6 +445,38 @@
       this.drawParticles(c, t);
     }
 
+    renderMap(t, image) {
+      const c = this.ctx, a = this.mapWalk, L = AVATARS[this.i];
+      c.drawImage(image, 0, 0, this.cv.width, this.cv.height);
+      c.save();
+      c.scale(4, 4);
+      // 작은 대각선 길을 따라 이동해 절벽 밖으로 나가지 않는다.
+      const dt = a.last === null ? 0 : Math.min(0.1, Math.max(0, (t - a.last) / 1000));
+      a.last = t;
+      const moving = this.awake && Math.abs(a.target - a.progress) > 0.01;
+      if (moving) a.progress += Math.sign(a.target - a.progress) * Math.min(Math.abs(a.target - a.progress), dt * 0.12);
+      else if (this.awake && t >= a.until) { a.target = Math.random(); a.until = t + 3500 + Math.random() * 4000; }
+      a.x = 70 + a.progress * 38; a.y = 65 + a.progress * 10;
+      const flip = a.target < a.progress, frame = Math.floor(t / (moving ? 160 : 500));
+      if (!this.awake) { c.fillStyle = 'rgba(4,2,12,.64)'; c.fillRect(0, 0, W, MAP_H); }
+      c.globalAlpha = this.awake ? 0.45 : 0.18;
+      c.fillStyle = '#050814'; c.fillRect(Math.round(a.x - 2), Math.round(a.y - 1), 18, 3);
+      c.globalAlpha = this.awake ? 1 : 0.4;
+      const react = t < this.av.until && ['cheer', 'angry'].includes(this.av.mode);
+      const pose = moving ? 'walk' : react ? (this.av.mode === 'angry' ? 'attack' : 'cast') : 'idle';
+      drawConstellation(c, this.i, a.x, a.y, pose, frame, flip, 0.65);
+      c.globalAlpha = 1;
+      if (this.awake && this.visitor) drawHuman(c, 116, 73, personLook(this.visitor), 'kneel', frame, true, 1);
+      if (this.awake) {
+        for (let k = 0; k < 10; k++) {
+          const x = 38 + (k * 37 % 115), y = 24 + (k * 19 % 67) - (t / 140 + k * 3) % 12;
+          c.globalAlpha = 0.15 + 0.4 * Math.max(0, Math.sin(t / 800 + k));
+          c.fillStyle = L.glow; c.fillRect(Math.floor(x), Math.floor(y), 1, 1);
+        }
+      }
+      c.restore();
+    }
+
     drawAvatar(c, t, sleeping) {
       const a = this.av, L = AVATARS[this.i], S = SANCT[this.i];
       const f = Math.floor(t / (a.mode === 'walk' ? 160 : 500));
@@ -380,18 +486,8 @@
       c.globalAlpha = (sleeping ? 0.2 : 0.35) + 0.1 * Math.sin(t / 300);
       c.fillStyle = L.glow; c.fillRect(Math.round(a.x - 2), a.y - 1, 28, 2); c.fillRect(Math.round(a.x + 2), a.y - 2, 20, 1);
       c.globalAlpha = sleeping ? c.globalAlpha : 1;
-      const sitHere = a.mode === 'sit' && S.seat;
-      if (L.horse) {
-        const flying = S.fly && (a.mode === 'walk' || Math.sin(t / 900) > 0.4);
-        drawHorse(c, a.x, y - (flying ? 10 + Math.round(Math.sin(t / 200) * 2) : 0), f, a.flip, 2, flying);
-      } else if (L.bear) {
-        drawBear(c, a.x, y, f, a.flip, 2, a.mode !== 'walk');
-      } else {
-        const pose = sleeping ? 'idle' : a.mode === 'walk' ? 'walk' : a.mode === 'cheer' ? 'cast' : a.mode === 'angry' ? 'attack' : sitHere ? S.seat.pose : 'idle';
-        const yy = sitHere ? S.seat.y + 2 : y;
-        drawHuman(c, a.x, yy, L, pose, f, a.flip, 2);
-        if (sitHere && L.gear === 'harp') { c.fillStyle = '#e8b84a'; c.fillRect(a.x + 20, yy - 28, 2, 26); c.fillRect(a.x + 20, yy - 28, 8, 2); c.fillStyle = '#fff6c8'; for (let k = 0; k < 3; k++) c.fillRect(a.x + 22 + k * 2, yy - 26, 1, 22); }
-      }
+      const pose = sleeping ? 'idle' : a.mode === 'walk' ? 'walk' : a.mode === 'cheer' ? 'cast' : a.mode === 'angry' ? 'attack' : 'idle';
+      drawConstellation(c, this.i, a.x, y, pose, f, a.flip, 1);
       // 반짝이
       if (!sleeping && Math.random() < 0.25) this.parts.push({ x: a.x + Math.random() * 24, y: y - Math.random() * 36, vy: -0.15, life: 40, col: L.glow });
     }
@@ -551,16 +647,13 @@
   /* ───────────── 초상 (성좌 선택 버튼용) ───────────── */
 
   function portrait(canvas, i, awake) {
-    canvas.width = 24; canvas.height = 24;
+    canvas.width = 48; canvas.height = 56;
     const c = canvas.getContext('2d');
     c.imageSmoothingEnabled = false;
-    const S = SANCT[i], L = AVATARS[i];
-    const g = c.createLinearGradient(0, 0, 0, 24); g.addColorStop(0, S.sky[0]); g.addColorStop(1, S.sky[1]);
-    c.fillStyle = g; c.fillRect(0, 0, 24, 24);
-    if (L.horse) drawHorse(c, 4, 22, 0, false, 1, false);
-    else if (L.bear) drawBear(c, 4, 22, 0, false, 1, true);
-    else drawHuman(c, 6, 24, L, 'idle', 0, false, 1);
-    if (!awake) { c.fillStyle = 'rgba(0,0,0,.6)'; c.fillRect(0, 0, 24, 24); }
+    c.fillStyle = SANCT[i].sky[0]; c.fillRect(0, 0, 48, 56);
+    c.fillStyle = SANCT[i].sky[1]; c.fillRect(3, 3, 42, 50);
+    drawConstellation(c, i, 8, 53, 'idle', 0, false, 1);
+    if (!awake) { c.fillStyle = 'rgba(0,0,0,.6)'; c.fillRect(0, 0, 48, 56); }
   }
 
   function personPortrait(canvas, p) {
@@ -571,5 +664,5 @@
     drawHuman(c, 2, 20, personLook(p), 'idle', 0, false, 1);
   }
 
-  CD.pixel = { Sanctuary, Adventure, portrait, personPortrait, personLook, drawHuman, drawMonster, SANCT, AVATARS, GLOW: AVATARS.map(a => a.glow) };
+  CD.pixel = { Sanctuary, Adventure, portrait, personPortrait, personLook, drawHuman, drawConstellation, drawMonster, SANCT, AVATARS, GLOW: AVATARS.map(a => a.glow) };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

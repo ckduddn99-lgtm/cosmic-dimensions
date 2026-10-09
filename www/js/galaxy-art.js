@@ -57,23 +57,22 @@
     const m = model(g), cx = w / 2, cy = h / 2, R = Math.min(w, h * 1.6) * 0.46;
     ctx.save();
     ctx.clearRect(0, 0, w, h);
-    const bg = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(w, h) * 0.7);
-    bg.addColorStop(0, '#140f3a'); bg.addColorStop(1, '#05051a');
-    ctx.fillStyle = bg; ctx.fillRect(0, 0, w, h);
-    const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, R * 0.45);
-    core.addColorStop(0, m.pal[0]); core.addColorStop(0.25, 'rgba(255,200,150,.35)'); core.addColorStop(1, 'rgba(0,0,0,0)');
+    const q = Math.max(1, Math.round(w / 160));
+    ctx.fillStyle = '#090d22'; ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = '#10152c'; ctx.fillRect(0, Math.round(h * .25), w, Math.round(h * .5));
     ctx.globalCompositeOperation = 'lighter';
     for (const p of m.pts) {
       const a = p.a + t * (1.2 - p.d * 0.6);
       const x = cx + Math.cos(a) * p.d * R, y = cy + Math.sin(a) * p.d * R * m.tilt;
       ctx.globalAlpha = p.alpha;
       ctx.fillStyle = p.col;
-      const s = p.size * (w / 320);
-      ctx.fillRect(x - s / 2, y - s / 2, s, s);
+      const s = Math.max(q, Math.round(p.size) * q);
+      ctx.fillRect(Math.round(x / q) * q, Math.round(y / q) * q, s, s);
     }
     ctx.globalAlpha = 1;
-    ctx.fillStyle = core;
-    ctx.beginPath(); ctx.ellipse(cx, cy, R * 0.45, R * 0.45 * m.tilt, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = m.pal[0];
+    ctx.fillRect(Math.round(cx / q) * q - q * 2, Math.round(cy / q) * q, q * 5, q);
+    ctx.fillRect(Math.round(cx / q) * q, Math.round(cy / q) * q - q * 2, q, q * 5);
     ctx.restore();
   }
 

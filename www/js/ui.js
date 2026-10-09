@@ -518,8 +518,8 @@
   function updateDims(now, mults, sp) {
     const u = C.unlocked(S), i = selDim, d = S.dims[i], def = D.dims[i], locked = i >= u;
     dtabEls.forEach((b, k) => { cls(b, 'active', k === i); cls(b, 'locked', k >= u); });
-    const img = $('#dd-img'), src = 'img/thumb/dim' + (i + 1) + '.webp';
-    if (img._src !== src) { img._src = src; img.src = src; }
+    const img = $('#dd-img'), src = window.CD.pixelUI.url('img/thumb/dim' + (i + 1) + '.webp');
+    if (img._src !== src) { img._src = src; img.src = src; img.classList.add('pixel-art'); }
     setText($('#dd-lv'), def.roman + ' · Lv. ' + d.bought);
     setText($('#dd-name'), def.name);
     const out = C.dimOutput(S, i, now, mults, sp);
@@ -707,8 +707,8 @@
         C.checkAchievements(S); update(Date.now(), true);
       });
     }
-    const img = el.querySelector('img'), src = 'img/ui/' + RS_ICON[i] + '.webp';
-    if (img._src !== src) { img._src = src; img.src = src; }
+    const img = el.querySelector('img'), src = window.CD.pixelUI.url('img/ui/' + RS_ICON[i] + '.webp');
+    if (img._src !== src) { img._src = src; img.src = src; img.classList.add('pixel-art'); }
     setText(el.querySelector('.rs-name'), r.name);
     setText(el.querySelector('.rs-lv'), 'Lv. ' + lvl + ' / ' + D.researchMax);
     setText(el.querySelector('.rs-desc'), r.desc);

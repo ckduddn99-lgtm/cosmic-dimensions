@@ -17,7 +17,7 @@
 
 <!-- ── 타이틀 ── -->
 <div class="splash" id="splash">
-  <img class="splash-bg" src="img/thumb/hero-bg.webp" alt="">
+  <img class="splash-bg" data-pixel-art="img/thumb/hero-bg.webp" alt="">
   <div class="splash-inner">
     <div class="splash-kicker">IDLE · INCREMENTAL · SPACE</div>
     <h1 class="splash-title">초공간<br>차원 붕괴</h1>
@@ -76,7 +76,7 @@
     <!-- ── 1. 개요 ── -->
     <section class="pane active" id="pane-home">
       <div class="frame hero" id="hero">
-        <img class="hero-bg" src="img/thumb/hero-bg.webp" alt="">
+        <img class="hero-bg" data-pixel-art="img/thumb/hero-bg.webp" alt="">
         <div class="hero-top">
           <div class="hero-label">총 반물질</div>
           <div class="hero-matter" id="matter">10</div>
@@ -129,10 +129,10 @@
     <!-- ── 2. 차원 ── -->
     <section class="pane" id="pane-dims">
       <div class="frame">
-        <div class="frame-head"><div class="frame-ico"><img src="img/ui/dim1.webp" alt="" style="width:30px;height:30px;border-radius:50%"></div><div><div class="frame-title">차원 관리</div><div class="frame-sub">높은 차원은 바로 아래 차원을 만들어냅니다. 10개를 모을 때마다 생산 ×2.</div></div></div>
+        <div class="frame-head"><div class="frame-ico"><img data-pixel-art="img/ui/dim1.webp" alt="" style="width:30px;height:30px;border-radius:50%"></div><div><div class="frame-title">차원 관리</div><div class="frame-sub">높은 차원은 바로 아래 차원을 만들어냅니다. 10개를 모을 때마다 생산 ×2.</div></div></div>
         <div class="dim-tabs" id="dim-tabs"></div>
         <div class="dd-main">
-          <div class="dd-art"><img id="dd-img" src="img/thumb/dim1.webp" alt=""></div>
+          <div class="dd-art"><img id="dd-img" data-pixel-art="img/thumb/dim1.webp" alt=""></div>
           <div class="dd-info">
             <div class="dd-lv" id="dd-lv">I · Lv. 0</div>
             <div class="dd-name" id="dd-name">물질 차원</div>
@@ -193,7 +193,7 @@
     <!-- ── 4. 연구 ── -->
     <section class="pane" id="pane-research">
       <div class="frame">
-        <div class="frame-head"><div class="frame-ico"><img src="img/ui/rs1.webp" alt="" style="width:30px;height:30px;border-radius:50%"></div><div><div class="frame-title">차원 연구</div><div class="frame-sub">새로운 법칙을 발견해 더 높은 차원의 힘을 얻습니다. 선행 연구가 필요합니다.</div></div></div>
+        <div class="frame-head"><div class="frame-ico"><img data-pixel-art="img/ui/rs1.webp" alt="" style="width:30px;height:30px;border-radius:50%"></div><div><div class="frame-title">차원 연구</div><div class="frame-sub">새로운 법칙을 발견해 더 높은 차원의 힘을 얻습니다. 선행 연구가 필요합니다.</div></div></div>
         <div class="seg wide" data-subnav="research">
           <button class="seg-btn active" data-sub="am">일반 연구</button>
           <button class="seg-btn" data-sub="ip">특수 연구 (IP)</button>
@@ -284,7 +284,7 @@
     <!-- ── 7. 업적 ── -->
     <section class="pane" id="pane-records">
       <div class="frame">
-        <div class="frame-head"><div class="frame-ico"><img src="img/ui/ach1.webp" alt="" style="width:30px;height:30px;border-radius:50%"></div><div><div class="frame-title">업적</div><div class="frame-sub">달성한 업적: <b id="ach-count">0</b> / <span id="ach-total">0</span> · 생산 보너스 <b id="ach-bonus">×1.00</b></div></div></div>
+        <div class="frame-head"><div class="frame-ico"><img data-pixel-art="img/ui/ach1.webp" alt="" style="width:30px;height:30px;border-radius:50%"></div><div><div class="frame-title">업적</div><div class="frame-sub">달성한 업적: <b id="ach-count">0</b> / <span id="ach-total">0</span> · 생산 보너스 <b id="ach-bonus">×1.00</b></div></div></div>
         <div class="seg wide" data-subnav="records">
           <button class="seg-btn active" data-sub="ach">업적</button>
           <button class="seg-btn" data-sub="stats">통계</button>
@@ -361,6 +361,7 @@
 <script src="js/saga.js?v=dev"></script>
 <script src="js/galaxy-art.js?v=dev"></script>
 <script src="js/pixel.js?v=dev"></script>
+<script src="js/pixel-ui.js?v=dev"></script>
 <script src="js/ui.js?v=dev"></script>
 </body>
 </html>
