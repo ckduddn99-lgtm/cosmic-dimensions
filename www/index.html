@@ -263,7 +263,20 @@
     .float-num{position:fixed;z-index:80;pointer-events:none;color:var(--green);font:700 .78rem var(--mono);text-shadow:0 1px 8px #000;animation:floatUp .85s ease-out forwards}
     @keyframes floatUp{to{transform:translateY(-42px);opacity:0}}
     .hidden{display:none!important}
-  </style>
+  
+.research-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px;margin-top:12px}
+.research-card{background:rgba(20,25,45,.8);border:1px solid rgba(100,150,255,.2);border-radius:10px;padding:12px}
+.research-card.maxed{border-color:#7CFC9A;opacity:.8}
+.research-name{font-weight:700;color:#c77dff}
+.research-desc{font-size:.78rem;color:#aaa;margin:4px 0}
+.research-level{font-size:.8rem;color:#9fd8ff;margin:4px 0}
+.research-bar{height:4px;background:rgba(255,255,255,.1);border-radius:2px;margin:6px 0;overflow:hidden}
+.research-fill{height:100%;background:linear-gradient(90deg,#c77dff,#6FD2F5);transition:width .3s}
+.galaxy-collection{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.galaxy-chip{background:rgba(138,43,226,.2);border:1px solid rgba(138,43,226,.4);border-radius:20px;padding:6px 12px;font-size:.78rem;color:#d8b4fe}
+.empty-msg{color:#666;font-size:.85rem;padding:20px;text-align:center}
+.event-banner{background:linear-gradient(90deg,#8A2BE2,#FF6B35);color:#fff;font-weight:700;text-align:center;padding:10px;border-radius:10px;margin-bottom:12px;animation:pulse 1s infinite}
+</style>
 </head>
 
 <body>
@@ -283,7 +296,8 @@
       <button class="tab active" data-tab="dimensions"><span class="tab-ico">◈</span><span class="tab-txt">개요</span></button>
       <button class="tab" data-tab="tickspeed"><span class="tab-ico">⏱</span><span class="tab-txt">차원</span></button>
       <button class="tab" data-tab="constellations"><span class="tab-ico">✦</span><span class="tab-txt">성좌</span></button>
-      <button class="tab" data-tab="challenges"><span class="tab-ico">⚔</span><span class="tab-txt">도전</span></button>
+      <button class="tab" data-tab="research">연구</button>
+    <button class="tab" data-tab="challenges"><span class="tab-ico">⚔</span><span class="tab-txt">도전</span></button>
       <button class="tab" data-tab="infinity"><span class="tab-ico">∞</span><span class="tab-txt">인피니티</span></button>
       <button class="tab" data-tab="achievements"><span class="tab-ico">🏆</span><span class="tab-txt">업적</span></button>
       <button class="tab" data-tab="stats"><span class="tab-ico">📊</span><span class="tab-txt">기록</span></button>
@@ -337,7 +351,14 @@
         <div class="constellation-grid" id="constellation-grid"></div>
       </section>
 
-      <section class="pane" id="pane-challenges">
+      <section class="pane" id="pane-research">
+      <div class="section-head"><div><h2>차원 연구</h2><p>새로운 법칙을 발견하여 더 높은 생산 효율을 획득합니다.</p></div></div>
+      <div class="research-grid" id="research-grid"></div>
+      <div class="section-head" style="margin-top:20px"><div><h2>은하 컬렉션</h2><p>탄생시킨 은하들의 기록입니다.</p></div><div class="metric"><span id="galaxy-count">0</span><small>개</small></div></div>
+      <div class="galaxy-collection" id="galaxy-collection"></div>
+    </section>
+
+    <section class="pane" id="pane-challenges">
         <div class="page-head"><h2>디버프 도전</h2><p>스스로 제약을 걸고 더 큰 보상을 노리세요. 도전 중에는 우주가 초기화됩니다.</p></div>
         <div class="challenge-grid" id="challenge-grid"></div>
       </section>
@@ -477,6 +498,24 @@ const dialogueFillers={
  place:['붉은 성운','고요한 암흑대','뒤틀린 시공간','잊힌 은하단','푸른 초신성 잔해','거대한 블랙홀 주변','성간 먼지 구름','얼어붙은 소행성대','빛의 장벽 너머','심연의 틈새','황금빛 퀘이사','침묵의 보이드','수정 성운','시간의 강가','어둠의 성단'],
  item:['시간의 파편','차원의 씨앗','별의 눈물','공간의 매듭','인피니티 잔향','중력의 심장','빛의 화석','우주의 기억','차원석','성운의 정수','시간의 모래','별가루 결정','공허의 조각','은하의 눈동자','특이점 파편']
 };
+const researchDefs=[
+ ['차원 공명','모든 차원 생산 +20%',1,0],
+ ['시간 압축','틱스피드 +10%',1,0],
+ ['물질 정제','제1차원 생산 +50%',2,0],
+ ['은하 씨앗','은하 생성 요구량 -10%',2,1],
+ ['초공간 도약','차원 부스트 효과 +25%',3,1],
+ ['특이점 이론','빅크런치 IP +1 추가',5,2],
+ ['평행 우주','오프라인 생산 +50%',3,2],
+ ['차원 융합','마스터리 XP +30%',2,0],
+ ['암흑 물질','버프 효과 2배 → 2.5배',4,4],
+ ['무한 회로','업적 배율 +50%',3,8],
+];
+const galaxyNames=['NGC-7843','K-91','IN-776','A17-β','ZQ-114','PX-9','HL-203','VX-88','OR-15','TY-42'];
+const eventDefs=[
+ ['차원 폭풍','모든 차원 생산 +300%',1800],
+ ['시간 왜곡','틱스피드 2배',900],
+ ['물질 홍수','반물질 획득 +200%',1200],
+];
 const secretAchDefs=[
  ['첫 과충전','과충전 버프를 1회 사용'],
  ['성좌 관측자','성좌 1개 해금'],
@@ -498,7 +537,10 @@ buff:{active:false,endsAt:0,used:false},
 challenges:[false,false,false],activeChallenge:-1,
 secretAch:Array(6).fill(false),
 constellations:constDefs.map(()=>({unlocked:false,level:0})),
-apostles:apostleDefs.map(()=>({awake:false,skills:[0,0,0],lastRevelation:0,log:[]}))}}
+apostles:apostleDefs.map(()=>({awake:false,skills:[0,0,0],lastRevelation:0,log:[]})),
+research:Array(10).fill(0),
+galaxyCollection:[],
+activeEvent:null,eventEndsAt:0,nextEventAt:Date.now()+300000}}
 let state=fresh(),buyMode='1',activeTab='dimensions',sound=true,popups=true,compact=true,lastFrame=performance.now(),lastUi=0,pendingAction=null;
 const $=s=>document.querySelector(s),$$=s=>Array.from(document.querySelectorAll(s));
 function esc(v){return String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
@@ -507,15 +549,15 @@ function log10(n){return n.m?Math.log10(n.m)+n.e:0}
 function unlocked(){return Math.min(8,4+state.shifts)}
 function dimCost(d,offset=0){let c=new BigNum(d.baseCost);const b=d.bought+offset;if(b>0)c=c.mul(new BigNum(d.costMult)).mul(Math.pow(1.15,b));if(state.activeChallenge===1)c=c.mul(3);return c}
 function constMult(idx){const c=state.constellations[idx];return c.unlocked?1+c.level*[.15,.08,.20,.20,.15,.25,.10,-.05][idx]:1}
-function dimMult(d){let m=new BigNum(1).mul(Math.pow(2,Math.floor(d.bought/10)));if(state.boosts)m=m.mul(Math.pow(state.infinityUpgrades[0].bought?2.5:2,state.boosts));if(d.id===1&&state.infinityUpgrades[2].bought)m=m.mul(100);if(state.infinityUpgrades[3].bought)m=m.mul(Math.max(1,state.ip*2));m=m.mul(1+state.achievements.filter(Boolean).length*.05*constMult(6));const mast=state.mastery[d.id-1];if(mast)m=m.mul(1+mast.level*.1);m=m.mul(constMult(0));const challBonus=state.challenges.reduce((a,c,i)=>a+(c?[.1,.15,.2][i]*constMult(5):0),0);if(challBonus)m=m.mul(1+challBonus);if(state.buff.active&&Date.now()<state.buff.endsAt)m=m.mul(2);let blessBonus=0;for(let i=0;i<8;i++)blessBonus+=apostleBonus(i,0);if(blessBonus>0)m=m.mul(1+blessBonus);return m}
+function dimMult(d){let m=new BigNum(1).mul(Math.pow(2,Math.floor(d.bought/10)));if(state.boosts)m=m.mul(Math.pow(state.infinityUpgrades[0].bought?2.5:2,state.boosts));if(d.id===1&&state.infinityUpgrades[2].bought)m=m.mul(100);if(state.infinityUpgrades[3].bought)m=m.mul(Math.max(1,state.ip*2));m=m.mul(1+state.achievements.filter(Boolean).length*.05*constMult(6));const mast=state.mastery[d.id-1];if(mast)m=m.mul(1+mast.level*.1);m=m.mul(constMult(0));const challBonus=state.challenges.reduce((a,c,i)=>a+(c?[.1,.15,.2][i]*constMult(5):0),0);if(challBonus)m=m.mul(1+challBonus);if(state.buff.active&&Date.now()<state.buff.endsAt)m=m.mul(2);let blessBonus=0;for(let i=0;i<8;i++)blessBonus+=apostleBonus(i,0);if(blessBonus>0)m=m.mul(1+blessBonus);m=m.mul(researchMult(0));if(d.id===1)m=m.mul(researchMult(2));if(state.activeEvent==='차원 폭풍')m=m.mul(4);if(state.activeEvent==='물질 홍수'&&d.id===1)m=m.mul(3);return m}
 function tickBase(){let b=.88;if(state.galaxies)b=Math.max(.6,b-state.galaxies*(state.infinityUpgrades[1].bought?.03:.02));return b}
-function speedFactor(){let f=Math.pow(1/tickBase(),state.tickspeedPurchased);f*=constMult(1);if(state.activeChallenge===0)f*=.5;return f}
+function speedFactor(){let f=Math.pow(1/tickBase(),state.tickspeedPurchased);f*=constMult(1);f*=researchMult(1);f*=eventSpeedMult();if(state.activeChallenge===0)f*=.5;return f}
 function productionRate(){return state.dims[0].amount.mul(dimMult(state.dims[0])).mul(speedFactor())}
 function canBuyCount(d,mode){let temp=new BigNum(state.matter),count=0,target=mode==='max'?10000:Number(mode);while(count<target){const c=dimCost(d,count);if(!temp.gte(c))break;temp=temp.sub(c);count++}return count}
 function buyDimension(id,mode=buyMode,anchor){const d=state.dims[id-1];if(id>unlocked())return;const count=canBuyCount(d,mode);if(!count){toast('반물질이 부족합니다.');shake(anchor);return}let spent=new BigNum(0);for(let i=0;i<count;i++)spent=spent.add(dimCost(d,i));state.matter=state.matter.sub(spent);d.amount=d.amount.add(count);d.bought+=count;state.stats.totalPurchases+=count;chime(170+id*45);if(popups&&anchor)floatText(anchor,'+'+count);pulse($('#matter'));checkAchievements();renderDimensions();renderHud()}
 function buyMaxAll(){let total=0;for(let i=unlocked();i>=1;i--){const d=state.dims[i-1],count=canBuyCount(d,'max');if(count){let spent=new BigNum(0);for(let j=0;j<count;j++)spent=spent.add(dimCost(d,j));state.matter=state.matter.sub(spent);d.amount=d.amount.add(count);d.bought+=count;total+=count}}if(total){state.stats.totalPurchases+=total;toast('<b>'+total+'개</b> 차원을 일괄 구매했습니다.');chime(540);renderAll()}else toast('구매 가능한 차원이 없습니다.')}
 function resetMatterDims(){state.matter=new BigNum(10);state.dims.forEach(d=>{d.amount=new BigNum(0);d.bought=0})}
-function prestige(type){if(type==='shift'){const u=unlocked(),d=state.dims[u-1];if(u>=8||d.bought<20)return toast(u>=8?'8차원이 모두 개방되었습니다.':'요구 수량이 부족합니다.');state.shifts++;resetMatterDims();record('제'+unlocked()+'차원 개방');toast('새로운 차원이 개방되었습니다.');chime(720)}else if(type==='boost'){const d=state.dims[unlocked()-1],req=20+state.boosts*10;if(d.bought<req)return toast('차원 부스트 요구 수량이 부족합니다.');state.boosts++;resetMatterDims();record('차원 부스트 #'+state.boosts);toast('전체 생산 배율이 강화되었습니다.');chime(840)}else if(type==='galaxy'){const d=state.dims[7],req=80+state.galaxies*40;if(state.shifts<4||d.bought<req)return toast('반물질 은하 요구 조건이 부족합니다.');state.galaxies++;state.shifts=0;state.boosts=0;resetMatterDims();record('반물질 은하 #'+state.galaxies);toast('틱스피드 법칙이 강화되었습니다.');chime(1020)}checkAchievements();renderAll()}
+function prestige(type){if(type==='shift'){const u=unlocked(),d=state.dims[u-1];if(u>=8||d.bought<20)return toast(u>=8?'8차원이 모두 개방되었습니다.':'요구 수량이 부족합니다.');state.shifts++;resetMatterDims();record('제'+unlocked()+'차원 개방');toast('새로운 차원이 개방되었습니다.');chime(720)}else if(type==='boost'){const d=state.dims[unlocked()-1],req=20+state.boosts*10;if(d.bought<req)return toast('차원 부스트 요구 수량이 부족합니다.');state.boosts++;resetMatterDims();record('차원 부스트 #'+state.boosts);toast('전체 생산 배율이 강화되었습니다.');chime(840)}else if(type==='galaxy'){const d=state.dims[7],req=80+state.galaxies*40;if(state.shifts<4||d.bought<req)return toast('반물질 은하 요구 조건이 부족합니다.');state.galaxies++;const gname=addGalaxyToCollection();state.shifts=0;state.boosts=0;resetMatterDims();record('반물질 은하 #'+state.galaxies+' · '+gname);toast('새 은하 <b>'+gname+'</b> 탄생!');chime(1020)}checkAchievements();renderAll()}
 function openPrestige(type){let title,copy,summary,ok=false;if(type==='shift'){const u=unlocked(),d=state.dims[u-1];title='차원 교체';copy='현재 반물질과 모든 차원을 초기화하고 다음 차원을 개방합니다.';summary='요구: 제'+u+'차원 20개 · 현재 '+d.bought+'개';ok=u<8&&d.bought>=20}else if(type==='boost'){const d=state.dims[unlocked()-1],req=20+state.boosts*10;title='차원 부스트';copy='현재 반물질과 차원을 초기화하고 모든 차원의 생산 배율을 강화합니다.';summary='요구: 제'+unlocked()+'차원 '+req+'개 · 현재 '+d.bought+'개';ok=d.bought>=req}else if(type==='galaxy'){const d=state.dims[7],req=80+state.galaxies*40;title='반물질 은하';copy='차원 교체와 부스트를 초기화하고 틱스피드의 기본 법칙을 강화합니다.';summary='요구: 제8차원 '+req+'개 · 현재 '+d.bought+'개';ok=state.shifts>=4&&d.bought>=req}else{title='빅 크런치';copy='현재 우주를 완전히 붕괴시킵니다. 차원, 교체, 부스트, 은하, 틱스피드는 초기화되고 인피니티 포인트 1점을 획득합니다.';summary='획득: +1 IP · 누적 '+(state.infinities+1)+'회';ok=state.matter.gte(INF)}openModal(title,copy,summary,ok?()=>type==='crunch'?bigCrunch():prestige(type):null)}
 function bigCrunch(){if(!state.matter.gte(INF))return;state.ip++;state.infinities++;state.stats.crunches++;state.matter=new BigNum(10);state.shifts=state.boosts=state.galaxies=state.tickspeedPurchased=0;state.tickspeedCost=new BigNum(1,3);state.dims.forEach(d=>{d.amount=new BigNum(0);d.bought=0});record('빅 크런치 #'+state.infinities);toast('<b>인피니티 포인트 +1</b> · 새로운 우주가 시작됩니다.');chime(1200);checkAchievements();renderAll()}
 function buffDuration(){return 60000*constMult(3)}
@@ -538,6 +580,14 @@ function skillCost(i,s){const a=state.apostles[i];return new BigNum(1,10+i*2).mu
 function fundSkill(i,s){const a=state.apostles[i];if(!a.awake||a.skills[s]>=20)return;const cost=skillCost(i,s);if(!state.matter.gte(cost))return toast('반물질이 부족합니다.');state.matter=state.matter.sub(cost);a.skills[s]++;const msg=makeDialogue(i,'levelup');apostleLog(i,msg+' ('+skillDefs[s][0]+' Lv.'+a.skills[s]+')');record(apostleDefs[i][0]+' · '+skillDefs[s][0]+' Lv.'+a.skills[s]);toast('<b>'+apostleDefs[i][0]+'</b> '+skillDefs[s][0]+' Lv.'+a.skills[s]);chime(900);renderAll()}
 function apostleBonus(i,s){const a=state.apostles[i];return a.awake?a.skills[s]*.05:0}
 function checkRevelations(){const now=Date.now();for(let i=0;i<8;i++){const a=state.apostles[i];if(!a.awake||a.skills[2]<=0)continue;const interval=Math.max(60000,300000-a.skills[2]*10000);if(now-a.lastRevelation>=interval){a.lastRevelation=now;const bonusMul=1+a.skills[2]*.1;const bonus=state.matter.mul(.01*bonusMul);state.matter=state.matter.add(bonus);state.stats.totalMatter=state.stats.totalMatter.add(bonus);const msg=makeDialogue(i,'discovery');apostleLog(i,msg+' (+'+format(bonus)+' AM)');toast('<b>'+apostleDefs[i][0]+'</b>의 계시: +'+format(bonus)+' AM');chime(1050)}}}
+function researchCost(i){const lvl=state.research[i];return new BigNum(researchDefs[i][2],0).mul(Math.pow(10,lvl*2))}
+function researchMaxLvl(i){return 5}
+function buyResearch(i){if(state.research[i]>=5)return;const cost=researchCost(i);const currency=i>=5?'ip':'matter';if(currency==='ip'){if(state.ip<researchDefs[i][2]+state.research[i]*2)return toast('IP가 부족합니다.');state.ip-=researchDefs[i][2]+state.research[i]*2}else{if(!state.matter.gte(cost))return toast('반물질이 부족합니다.');state.matter=state.matter.sub(cost)}state.research[i]++;record('연구 · '+researchDefs[i][0]+' Lv.'+state.research[i]);toast('<b>'+researchDefs[i][0]+'</b> Lv.'+state.research[i]);chime(920);renderAll()}
+function researchMult(idx){return 1+state.research[idx]*[.2,.1,.5,0,.25,0,.5,.3,0,.5][idx]}
+function addGalaxyToCollection(){const name=galaxyNames[Math.floor(Math.random()*galaxyNames.length)]+'-'+Math.floor(Math.random()*900+100);state.galaxyCollection.push(name);if(state.galaxyCollection.length>50)state.galaxyCollection.shift();return name}
+function checkEvent(){const now=Date.now();if(state.activeEvent&&now>=state.eventEndsAt){state.activeEvent=null;toast('특수 현상 종료');renderAll()}if(!state.activeEvent&&now>=state.nextEventAt){const e=eventDefs[Math.floor(Math.random()*eventDefs.length)];state.activeEvent=e[0];state.eventEndsAt=now+e[2]*1000;state.nextEventAt=now+e[2]*1000+300000+Math.random()*600000;toast('<b>특수 현상!</b> '+e[0]+' — '+e[1]);chime(1100);record('특수 현상 · '+e[0]);renderAll()}}
+function eventMult(){if(!state.activeEvent)return 1;if(state.activeEvent==='차원 폭풍')return 4;if(state.activeEvent==='물질 홍수')return 3;return 1}
+function eventSpeedMult(){if(state.activeEvent==='시간 왜곡')return 2;return 1}
 function buyTick(){if(!state.matter.gte(state.tickspeedCost))return toast('반물질이 부족합니다.');state.matter=state.matter.sub(state.tickspeedCost);state.tickspeedPurchased++;state.tickspeedCost=state.tickspeedCost.mul(10);chime(610);checkAchievements();renderAll()}
 function buyUpgrade(id){const u=state.infinityUpgrades[id];if(u.bought||state.ip<u.cost)return;state.ip-=u.cost;u.bought=true;record('인피니티 업그레이드 · '+u.name);toast('<b>'+u.name+'</b> 활성화');chime(930);checkAchievements();renderAll()}
 function renderHud(){const m=$('#matter'),prev=m.textContent,next=format(state.matter);if(prev!==next){m.textContent=next;if(performance.now()-lastUi>240)pulse(m)}$('#rate').textContent='+'+format(productionRate())+' /초';const p=Math.max(0,Math.min(100,log10(state.matter)/308.252*100));$('#infinity-progress').style.width=p+'%';const remain=Math.max(0,309-Math.floor(log10(state.matter)));$('#infinity-distance').textContent=state.matter.gte(INF)?'빅 크런치 가능':'∞까지 약 '+remain+'자릿수';const mt=$('#matter-top');if(mt)mt.textContent=format(state.matter);const it=$('#ip-top');if(it)it.textContent=state.ip;const at=$('#ach-top');if(at)at.textContent=state.achievements.filter(Boolean).length+state.secretAch.filter(Boolean).length}
@@ -564,6 +614,11 @@ return '<article class="const-card '+(s.unlocked?'unlocked':'')+'"><div class="c
 $$('[data-const-unlock]').forEach(b=>b.onclick=()=>unlockConst(Number(b.dataset.constUnlock)));
 $$('[data-const-level]').forEach(b=>b.onclick=()=>levelConst(Number(b.dataset.constLevel)));
 $$('[data-fund]').forEach(b=>{const[i,s]=b.dataset.fund.split(':').map(Number);b.onclick=()=>fundSkill(i,s)})}
+function renderResearch(){$('#research-grid').innerHTML=researchDefs.map((r,i)=>{const lvl=state.research[i],maxed=lvl>=5,cost=lvl>=5?null:(i>=5?researchDefs[i][2]+lvl*2+' IP':format(researchCost(i))+' AM'),canAfford=lvl>=5?false:(i>=5?state.ip>=researchDefs[i][2]+lvl*2:state.matter.gte(researchCost(i)));
+return '<article class="research-card '+(maxed?'maxed':'')+'"><div class="research-name">'+r[0]+'</div><div class="research-desc">'+r[1]+'</div><div class="research-level">Lv.'+lvl+' / 5</div><div class="research-bar"><div class="research-fill" style="width:'+(lvl*20)+'%"></div></div><button class="secondary small" data-research="'+i+'" '+(maxed||!canAfford?'disabled':'')+'>'+(maxed?'MAX':cost)+'</button></article>'}).join('');
+$$('[data-research]').forEach(b=>b.onclick=()=>buyResearch(Number(b.dataset.research)));
+$('#galaxy-count').textContent=state.galaxyCollection.length;
+$('#galaxy-collection').innerHTML=state.galaxyCollection.length?state.galaxyCollection.map(g=>'<div class="galaxy-chip">🌌 '+g+'</div>').join(''):'<div class="empty-msg">아직 탄생시킨 은하가 없습니다.</div>'}
 function renderChallenges(){$('#challenge-grid').innerHTML=challDefs.map((c,i)=>{const done=state.challenges[i],active=state.activeChallenge===i;
 return '<article class="chall-card '+(done?'done':active?'active':'')+'"><div class="chall-name">'+c[0]+'</div><div class="chall-debuff">⚠ '+c[1]+'</div><div class="chall-goal">목표: '+c[2]+'</div><div class="chall-reward">보상: '+c[3]+'</div>'+(done?'<div class="chall-status">✓ 완료</div>':active?'<button class="secondary" id="giveup-btn">포기하기</button>':'<button class="primary" data-chall="'+i+'">도전 시작</button>')+'</article>'}).join('');
 $$('[data-chall]').forEach(b=>b.onclick=()=>startChallenge(Number(b.dataset.chall)));const g=$('#giveup-btn');if(g)g.onclick=giveUpChallenge}
@@ -573,7 +628,7 @@ const secretHtml='<div class="secret-divider">??? 미지의 기록 ???</div>'+se
 $('#achievement-grid').innerHTML=normalHtml+secretHtml}
 function formatTime(sec){sec=Math.floor(sec);const d=Math.floor(sec/86400),h=Math.floor(sec%86400/3600),m=Math.floor(sec%3600/60),s=sec%60;return d?d+'일 '+h+'시간':h?h+'시간 '+m+'분':m?m+'분 '+s+'초':s+'초'}
 function renderStats(){const stats=[['총 플레이 시간',formatTime(state.stats.playSeconds)],['누적 반물질',format(state.stats.totalMatter)],['총 차원 구매',state.stats.totalPurchases.toLocaleString('ko-KR')],['빅 크런치',state.infinities.toLocaleString('ko-KR')],['차원 교체',state.shifts.toLocaleString('ko-KR')],['차원 부스트',state.boosts.toLocaleString('ko-KR')],['반물질 은하',state.galaxies.toLocaleString('ko-KR')],['생산 가속','×'+format(new BigNum(speedFactor()))]];$('#stats-grid').innerHTML=stats.map(s=>'<article class="stat-card"><div class="stat-label">'+esc(s[0])+'</div><div class="stat-value">'+esc(s[1])+'</div></article>').join('');$('#history-list').innerHTML=(state.stats.history||[]).slice(-8).reverse().map((h,i)=>'<div class="history-row"><span>'+esc(h)+'</span><span>'+esc(('#'+(state.stats.history.length-i)).padStart(3,'0'))+'</span></div>').join('')||'<div class="history-row"><span>기록 없음</span><span>—</span></div>'}
-function renderAll(){renderHud();renderPrestige();renderDimensions();renderTicks();renderInfinity();renderAchievements();renderStats();if(activeTab==='constellations')renderConstellations();if(activeTab==='challenges')renderChallenges();lastUi=performance.now()}
+function renderAll(){renderHud();renderPrestige();renderDimensions();renderTicks();renderInfinity();renderAchievements();renderStats();if(activeTab==='constellations')renderConstellations();if(activeTab==='challenges')renderChallenges();if(activeTab==='research')renderResearch();lastUi=performance.now()}
 function produce(dt,track=true){const factor=speedFactor();dt*=factor;const u=unlocked(),singleMode=state.activeChallenge===2;
 for(let i=u;i>=2;i--){if(singleMode)continue;const higher=state.dims[i-1],lower=state.dims[i-2];lower.amount=lower.amount.add(higher.amount.mul(dimMult(higher)).mul(dt*.1))}
 const gain=state.dims[0].amount.mul(dimMult(state.dims[0])).mul(dt);state.matter=state.matter.add(gain);
@@ -583,8 +638,8 @@ if(state.activeChallenge>=0){const goals=[new BigNum(1,10),new BigNum(1,15),new 
 return gain}
 function offlineProduce(seconds){const t=seconds*speedFactor(),u=unlocked(),original=state.dims.map(d=>new BigNum(d.amount)),mult=state.dims.map(d=>dimMult(d));for(let i=0;i<u;i++){let add=new BigNum(0);for(let j=i+1;j<u;j++){let coeff=1;for(let k=i+1;k<=j;k++)coeff*=.1;coeff*=Math.pow(t,j-i)/factorial(j-i);let chain=new BigNum(1);for(let k=i+1;k<=j;k++)chain=chain.mul(mult[k]);add=add.add(original[j].mul(chain).mul(coeff))}state.dims[i].amount=state.dims[i].amount.add(add)}let gain=new BigNum(0);for(let j=0;j<u;j++){let coeff=Math.pow(t,j+1)/factorial(j+1);for(let k=1;k<=j;k++)coeff*=.1;let chain=mult[0];for(let k=1;k<=j;k++)chain=chain.mul(mult[k]);gain=gain.add(original[j].mul(chain).mul(coeff))}state.matter=state.matter.add(gain);state.stats.totalMatter=state.stats.totalMatter.add(gain);return gain}
 function factorial(n){let x=1;for(let i=2;i<=n;i++)x*=i;return x}
-function loop(now){const realDt=Math.min(.25,(now-lastFrame)/1000);lastFrame=now;state.stats.playSeconds+=realDt;checkBuff();produce(realDt);if(Math.floor(now/1000)%5===0)checkRevelations();if(now-lastUi>120){renderHud();if(activeTab==='dimensions'&&now-lastUi>480){renderPrestige();renderDimensions()}if(activeTab==='tickspeed')renderTicks();if(activeTab==='stats'&&now-lastUi>1000)renderStats();lastUi=now}if(Math.floor(state.stats.playSeconds)%2===0)checkAchievements();requestAnimationFrame(loop)}
-function switchTab(name){activeTab=name;$$('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));$$('.pane').forEach(p=>p.classList.toggle('active',p.id==='pane-'+name));if(name==='stats')renderStats();if(name==='achievements')renderAchievements();if(name==='constellations')renderConstellations();if(name==='challenges')renderChallenges();window.scrollTo({top:0,behavior:'smooth'})}
+function loop(now){const realDt=Math.min(.25,(now-lastFrame)/1000);lastFrame=now;state.stats.playSeconds+=realDt;checkBuff();produce(realDt);if(Math.floor(now/1000)%5===0){checkRevelations();checkEvent()}if(now-lastUi>120){renderHud();if(activeTab==='dimensions'&&now-lastUi>480){renderPrestige();renderDimensions()}if(activeTab==='tickspeed')renderTicks();if(activeTab==='stats'&&now-lastUi>1000)renderStats();lastUi=now}if(Math.floor(state.stats.playSeconds)%2===0)checkAchievements();requestAnimationFrame(loop)}
+function switchTab(name){activeTab=name;$$('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));$$('.pane').forEach(p=>p.classList.toggle('active',p.id==='pane-'+name));if(name==='stats')renderStats();if(name==='achievements')renderAchievements();if(name==='constellations')renderConstellations();if(name==='challenges')renderChallenges();if(name==='research')renderResearch();window.scrollTo({top:0,behavior:'smooth'})}
 function toast(html){const n=document.createElement('div');n.className='toast';n.innerHTML=html;$('#toasts').appendChild(n);setTimeout(()=>{n.style.opacity='0';n.style.transform='translateY(8px)';setTimeout(()=>n.remove(),220)},2600)}
 function floatText(anchor,text){const r=anchor.getBoundingClientRect(),n=document.createElement('div');n.className='float-num';n.textContent=text;n.style.left=(r.left+r.width/2-12)+'px';n.style.top=(r.top-4)+'px';document.body.appendChild(n);setTimeout(()=>n.remove(),900)}
 function pulse(el){if(!el)return;el.classList.remove('pulse');void el.offsetWidth;el.classList.add('pulse')}
@@ -606,6 +661,9 @@ s.activeChallenge=-1;
 s.secretAch=Array.from({length:6},(_,i)=>raw.secretAch&&raw.secretAch[i]===true);
 s.constellations=constDefs.map((_,i)=>{const c=raw.constellations&&raw.constellations[i]||{};return{unlocked:c.unlocked===true,level:whole(c.level,0,10)}});
 s.apostles=apostleDefs.map((_,i)=>{const a=raw.apostles&&raw.apostles[i]||{};return{awake:a.awake===true,skills:Array.from({length:3},(_,j)=>whole(a.skills&&a.skills[j],0,20)),lastRevelation:num(a.lastRevelation,0,Date.now()),log:Array.isArray(a.log)?a.log.slice(-20).filter(x=>typeof x==='string'):[]}});
+s.research=Array.from({length:10},(_,i)=>whole(raw.research&&raw.research[i],0,5));
+s.galaxyCollection=Array.isArray(raw.galaxyCollection)?raw.galaxyCollection.filter(x=>typeof x==='string').slice(0,50):[];
+s.activeEvent=null;s.eventEndsAt=0;s.nextEventAt=num(raw.nextEventAt,0,Date.now()+300000);
 return s}
 function importFile(file){const reader=new FileReader();reader.onload=()=>{try{const raw=JSON.parse(reader.result);if(!raw||!raw.dims)throw new Error('invalid');state=revive(raw);const elapsed=Math.max(0,(Date.now()-(Number(raw.savedAt)||Date.now()))/1000);let gain=new BigNum(0);if(elapsed>1)gain=offlineProduce(elapsed);state.savedAt=Date.now();record('세이브 불러오기');renderAll();toast('세이브를 불러왔습니다.');if(elapsed>1)openModal('오프라인 진행','저장된 우주가 비활성 시간 동안 생산을 계속했습니다.','경과 '+formatTime(elapsed)+' · 획득 +'+format(gain)+' AM',()=>{})}catch(e){toast('올바른 세이브 파일이 아닙니다.')}};reader.readAsText(file)}
 function resetGame(){state=fresh();closeModal();renderAll();toast('새 우주가 시작되었습니다.')}
