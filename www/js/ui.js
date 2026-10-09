@@ -28,7 +28,7 @@
   let buyMode = 1, tab = 'home', started = false, lastFrame = 0, lastUi = 0, lastSlowUi = 0, lastSave = 0, hiddenAt = 0;
   let nextCometAt = Date.now() + 25000, loadedSavedAt = 0, isNewGame = true, lastDailyCheck = 0, dailyPending = false;
   let selDim = 0, selResearch = 0, gxIndex = -1, achFilter = 'all';
-  const subTab = { infinity: 'upgrades', records: 'ach', research: 'am' };
+  const subTab = { infinity: 'upgrades', records: 'ach', research: 'am', stars: 'sanct' };
   const newAch = new Set();
   const unlockedTabs = {};
 
@@ -273,7 +273,7 @@
         break;
       case 'apostleFound':
         sfx.achieve(); flash();
-        toast('<b>' + esc(D.constellations[p.i].name) + '</b>이(가) 사도 <b>' + esc(D.apostles[p.i].name) + '</b>를 찾았다!', '✨', 'gold');
+        toast('성좌 <b>\'' + esc(D.constellations[p.i].name) + '\'</b>이(가) 깨어났습니다! 곧 사도를 고를 것입니다.', '✨', 'gold');
         save(); break;
       case 'constLevel':
         sfx.achieve();
@@ -297,6 +297,7 @@
         });
         save(); break;
       case 'challengeQuit': toast('도전을 포기하고 원래 우주로 돌아왔습니다.', '↩'); save(); break;
+      case 'saga': onSaga(p); break;
     }
   }
   function flushMastery() {
@@ -803,31 +804,66 @@
     modal({ icon: '↩', title: '도전 포기', body: '<p>이 도전의 진행은 사라지고 원래 우주로 돌아갑니다.</p>', actions: [{ label: '계속하기', cancel: true }, { label: '포기', cls: 'btn-danger', run: () => C.exitChallenge(S, false) }] });
   }
 
-  /* ───────────── 6. 성좌 ───────────── */
+  /* ───────────── 6. 성좌 (성소 · 사도 · 운명) ───────────── */
 
+  const SG = window.CD.saga, SDX = window.CD.sagaData, PX = window.CD.pixel;
   const EMBLEMS = ['🏹', '🎵', '👑', '🐎', '🦢', '🦂', '🐻', '🌌'];
-  const constEls = [];
+  let selConst = 0, sanct = null, adv = null, bubbleUntil = 0, lastStage = 0, skillEls = [], apEls = null, faceFor = -1;
+  const pickEls = [], fateEls = {}, tensionSeen = {};
+  const hhmm = t => new Date(t).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+  const FEED_CLS = { fate: 'big', 'fate-fx': 'sys', death: 'bad', fall: 'bad', betray: 'bad', take: 'take', omen: 'omen', 'omen-big': 'omen big', voice: 'omen', pick: 'sys', sponsor: 'sys', save: 'sys', level: 'sys', battle: '' };
+  function feedHTML(list) {
+    return list.map(f => '<div class="feed-row ' + (FEED_CLS[f.kind] || '') + (f.big && f.kind !== 'omen-big' ? ' big' : '') + '"><time>' + hhmm(f.t) + '</time><span>' + esc(f.text) + '</span></div>').join('') || '<div class="empty-ap">아직 아무 일도 일어나지 않았습니다.</div>';
+  }
+  function renderFeed(el, list) {
+    const last = list[list.length - 1], sig = list.length + ':' + (last ? last.t + last.text : '');
+    if (el._sig === sig) return;
+    el._sig = sig;
+    el.innerHTML = feedHTML(list.slice().reverse());
+  }
+
   function buildStars() {
-    const grid = $('#const-grid');
+    const pick = $('#const-pick');
     D.constellations.forEach((c, i) => {
-      const card = h('article', 'frame const-card');
-      card.innerHTML = '<div class="const-head"><div class="frame-ico">' + EMBLEMS[i] + '</div><div><div class="const-name">' + esc(c.name) + '</div><div class="const-title">' + esc(c.title) + '</div></div><div class="const-lv"></div></div>' +
-        '<div class="const-desc"></div><div class="const-status"><span class="st-a"></span><span class="st-b"></span></div><span class="rail-bar sm gold"><span class="rail-bar-in"></span></span>' +
-        '<div class="invest-row"><button class="btn btn-cyan sm inv10">10% 투자</button><button class="btn btn-gold sm invneed"></button></div>' +
-        '<div class="apostle hidden"><div class="apostle-head">✦ ' + esc(D.apostles[i].name) + '<small>' + esc(D.apostles[i].title) + '</small></div><div class="apostle-pers">' + esc(D.apostles[i].personality) + '</div><div class="skills"></div><div class="apostle-log"></div></div>';
-      const q = s => card.querySelector(s);
-      const r = { card, lv: q('.const-lv'), desc: q('.const-desc'), a: q('.st-a'), b: q('.st-b'), fill: q('.rail-bar-in'), inv10: q('.inv10'), invNeed: q('.invneed'), apostle: q('.apostle'), log: q('.apostle-log'), skills: [] };
-      D.skills.forEach((sk, j) => {
-        const row = h('div', 'skill-row', '<div><b></b><small>' + esc(sk.desc) + '</small></div><button class="btn btn-violet sm"><span class="cost">' + GEM_AM + '<span></span></span></button>');
-        const s = { name: row.querySelector('b'), btn: row.querySelector('button'), cost: row.querySelector('.cost span') };
-        s.btn.addEventListener('click', () => { if (C.fundSkill(S, i, j, Date.now())) { sfx.buy(); toast('<b>' + esc(D.apostles[i].name) + '</b> ' + esc(sk.name) + ' Lv.' + S.apostles[i].skills[j], '✦', 'violet'); update(Date.now(), true); } else { sfx.error(); shake(s.btn); } });
-        q('.skills').appendChild(row);
-        r.skills.push(s);
+      const b = h('button', 'cpick', '<canvas class="pix" width="24" height="24"></canvas><b>' + esc(c.name) + '</b><small></small><i class="badge"></i>');
+      b.addEventListener('click', () => { selConst = i; sfx.click(); hideBubble(); update(Date.now(), true); });
+      pick.appendChild(b);
+      pickEls.push({ b, cv: b.querySelector('canvas'), small: b.querySelector('small'), badge: b.querySelector('.badge'), awake: null });
+    });
+    sanct = new PX.Sanctuary($('#sanct-canvas'));
+    adv = new PX.Adventure($('#adv-canvas'));
+    $('#inv10').addEventListener('click', e => investConst(selConst, S.matter.mul(0.1), e.currentTarget));
+    $('#invneed').addEventListener('click', e => { const rem = C.constRemaining(S, selConst); if (rem) investConst(selConst, rem, e.currentTarget); });
+    const sk = $('#sanct-skills');
+    skillEls = D.skills.map((sd, j) => {
+      const row = h('div', 'skill-row', '<div><b></b><small>' + esc(sd.desc) + '</small></div><button class="btn btn-violet sm"><span class="cost">' + GEM_AM + '<span></span></span></button>');
+      sk.appendChild(row);
+      const r = { name: row.querySelector('b'), btn: row.querySelector('button'), cost: row.querySelector('.cost span') };
+      r.btn.addEventListener('click', () => {
+        const i = selConst;
+        if (C.fundSkill(S, i, j, Date.now())) { sfx.buy(); toast('<b>' + esc(D.constellations[i].name) + '</b> 권능 · ' + esc(sd.name) + ' Lv.' + S.apostles[i].skills[j], '✦', 'violet'); update(Date.now(), true); }
+        else { sfx.error(); shake(r.btn); }
       });
-      r.inv10.addEventListener('click', () => investConst(i, S.matter.mul(0.1), r.inv10));
-      r.invNeed.addEventListener('click', () => { const rem = C.constRemaining(S, i); if (rem) investConst(i, rem, r.invNeed); });
-      grid.appendChild(card);
-      constEls.push(r);
+      return r;
+    });
+    const ai = $('#apostle-info');
+    ai.innerHTML = '<div class="ap-wrap"><div class="ap-head"><canvas class="pix" width="16" height="20"></canvas><div><div class="ap-name"></div><div class="ap-meta"></div></div></div>' +
+      '<div class="bar3"><span>체력</span><span class="rail-bar hp"><span class="rail-bar-in"></span></span><b></b></div>' +
+      '<div class="bar3"><span>충성</span><span class="rail-bar loy"><span class="rail-bar-in"></span></span><b></b></div>' +
+      '<div class="bar3"><span>타락</span><span class="rail-bar cor"><span class="rail-bar-in"></span></span><b></b></div>' +
+      '<div class="bar3"><span>경험</span><span class="rail-bar"><span class="rail-bar-in"></span></span><b></b></div>' +
+      '<div class="ap-stats"></div></div><div class="empty-ap hidden"></div>';
+    const bars = Array.from(ai.querySelectorAll('.bar3'));
+    apEls = {
+      wrap: ai.querySelector('.ap-wrap'), empty: ai.querySelector('.empty-ap'), cv: ai.querySelector('canvas'), name: ai.querySelector('.ap-name'), meta: ai.querySelector('.ap-meta'),
+      bars: bars.map(b => ({ fill: b.querySelector('.rail-bar-in'), val: b.querySelector('b') })), stats: ai.querySelector('.ap-stats'), drawn: null
+    };
+    const fl = $('#fate-list');
+    SDX.fates.forEach(f => {
+      const el = h('div', 'fate', '<div class="fate-ico">' + f.icon + '</div><div class="fate-main"><div class="fate-name">' + esc(f.name) + '<span class="fate-up hidden">▲</span></div><div class="fate-desc">' + esc(f.desc) + '</div>' +
+        '<div class="fate-inv">' + (f.involve === 'all' ? '✦ 모든 성좌' : f.involve === 'one' ? '✦ 사도 한 명' : f.involve.map(i => EMBLEMS[i]).join(' ')) + '</div><span class="rail-bar sm"><span class="rail-bar-in"></span></span></div><div class="fate-p"><span></span><small></small></div>');
+      fl.appendChild(el);
+      fateEls[f.id] = { el, up: el.querySelector('.fate-up'), fill: el.querySelector('.rail-bar-in'), p: el.querySelector('.fate-p span'), note: el.querySelector('.fate-p small'), upUntil: 0 };
     });
   }
   function investConst(i, amount, btn) {
@@ -837,39 +873,175 @@
     const [x, y] = centerOf(btn); burst(x, y, 6, '#ffe1a1');
     update(Date.now(), true);
   }
-  function updateStars() {
-    constEls.forEach((r, i) => {
-      const c = S.constellations[i], ap = S.apostles[i], def = D.constellations[i];
-      cls(r.card, 'found', c.apostleFound);
-      setText(r.lv, c.apostleFound ? 'Lv.' + c.level + ' / 10' : '탐색 중');
-      setHTML(r.desc, esc(def.desc) + (c.apostleFound ? ' · 현재 <b>+' + Math.round(C.constBonus(S, i) * 100) + '%</b>' : ''));
-      const need = C.constNeed(S, i);
-      if (!need) {
-        setText(r.a, '후원 완료'); setText(r.b, 'MAX'); width(r.fill, 100);
-        setDisabled(r.inv10, true); setDisabled(r.invNeed, true); setText(r.invNeed, '최대 레벨');
-      } else {
-        const rem = C.constRemaining(S, i);
-        setText(r.a, c.apostleFound ? '다음 후원 Lv.' + (c.level + 1) : '사도 탐색');
-        setText(r.b, fmt(c.invested) + ' / ' + fmt(need));
-        width(r.fill, Math.min(1, c.invested.div(need).toNumber()) * 100);
-        setDisabled(r.inv10, S.matter.isZero());
-        setText(r.invNeed, '필요량 투자 · ' + fmt(rem));
-        setDisabled(r.invNeed, !S.matter.gte(rem));
-      }
-      r.apostle.classList.toggle('hidden', !ap.awake);
-      if (ap.awake) {
-        r.skills.forEach((s, j) => {
-          setText(s.name, D.skills[j].name + ' Lv.' + ap.skills[j] + (j === 2 && ap.skills[j] > 0 ? ' · ' + Math.round(C.revelationInterval(ap.skills[j]) / 1000) + '초마다' : ''));
-          if (ap.skills[j] >= 20) { setText(s.cost, 'MAX'); setDisabled(s.btn, true); }
-          else { setText(s.cost, fmt(C.skillCost(S, i, j))); setDisabled(s.btn, !C.canFundSkill(S, i, j)); }
-        });
-        const sig = ap.log.length + ':' + (ap.log.length ? ap.log[ap.log.length - 1].msg : '');
-        if (r.log._sig !== sig) {
-          r.log._sig = sig;
-          r.log.innerHTML = ap.log.slice(-5).reverse().map(l => '<div class="log-row">' + (l.t ? '<time>' + new Date(l.t).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) + '</time>' : '') + esc(l.msg) + '</div>').join('');
-        }
-      }
+
+  function showBubble(text, mood) {
+    const b = $('#sanct-bubble');
+    b.textContent = text.length > 46 ? text.slice(0, 45) + '…' : text;
+    b.classList.remove('hidden');
+    bubbleUntil = performance.now() + 3800;
+    if (sanct && mood) sanct.react(mood);
+  }
+  function hideBubble() { $('#sanct-bubble').classList.add('hidden'); bubbleUntil = 0; }
+
+  function drawStage(t) {
+    if (!sanct) return;
+    const i = selConst, awake = S.constellations[i].apostleFound, ap = SG.apostleOf(S, i);
+    sanct.set(i, awake);
+    sanct.setVisitor(ap && ap.act && Date.now() - ap.act.t < 20000 && ['chosen', 'sponsor', 'level'].includes(ap.act.kind) ? ap : null);
+    sanct.render(t);
+    adv.setApostle(ap, PX.GLOW[i]);
+    if (!ap) { const g = S.saga.hall.filter(h => h.patron === i).pop(); adv.setGrave(g && g.fate === 'dead' ? g : null); }
+    adv.render(t);
+    const b = $('#sanct-bubble');
+    if (bubbleUntil && t > bubbleUntil) hideBubble();
+    else if (bubbleUntil) { const a = sanct.anchor(); b.style.left = Math.min(80, Math.max(20, a.x)) + '%'; b.style.top = Math.max(18, a.y) + '%'; }
+  }
+
+  function updateStars(now) {
+    const inf = SG.influence(S);
+    pickEls.forEach((r, i) => {
+      const awake = S.constellations[i].apostleFound;
+      if (r.awake !== awake) { r.awake = awake; PX.portrait(r.cv, i, awake); }
+      cls(r.b, 'active', i === selConst); cls(r.b, 'sleep', !awake);
+      const ap = SG.apostleOf(S, i);
+      setText(r.small, awake ? (inf[i] * 100).toFixed(1) + '%' : '잠듦');
+      cls(r.badge, 'on', !!(ap && ap.corrupt >= 60));
     });
+    const hot = SDX.fates.some(f => SG.fateReady(S, f) && SG.prob(S.saga.tension[f.id]) >= 0.3);
+    cls($('[data-subnav="stars"] [data-sub="fate"] .badge'), 'on', hot && subTab.stars !== 'fate');
+    if (subTab.stars === 'sanct') updateSanct(now, inf);
+    else if (subTab.stars === 'fate') updateFates(inf);
+    else updateWorld();
+  }
+
+  function updateSanct(now, inf) {
+    const i = selConst, c = S.constellations[i], def = D.constellations[i], awake = c.apostleFound, g = S.saga;
+    if (faceFor !== i + (awake ? 10 : 0)) { faceFor = i + (awake ? 10 : 0); PX.portrait($('#sanct-face'), i, awake); }
+    setText($('#sanct-title'), '성좌 \'' + def.name + '\'');
+    setText($('#sanct-sub'), def.title + ' · ' + PX.SANCT[i].name);
+    setText($('#sanct-lv'), awake ? 'Lv.' + c.level + ' / 10' : '잠듦');
+    setText($('#sanct-name'), PX.SANCT[i].name);
+    statRows($('#sanct-stats'), [
+      ['영향력', (inf[i] * 100).toFixed(1) + '%', true],
+      ['몸값 (후원 비용 배율)', '×' + SG.priceMult(S, i).toFixed(2)],
+      ['성력 (성좌의 재화)', fmt(g.power[i])],
+      ['명성', Math.round(g.fame[i])],
+      ['축복', def.desc + (awake ? ' · 현재 +' + Math.round(C.constBonus(S, i) * 100) + '%' : '')]
+    ]);
+    const need = C.constNeed(S, i);
+    if (!need) {
+      setText($('#sanct-prog-a'), '후원 완료'); setText($('#sanct-prog-b'), 'MAX'); width($('#sanct-fill'), 100);
+      setDisabled($('#inv10'), true); setDisabled($('#invneed'), true); setText($('#invneed'), '최대 레벨');
+    } else {
+      const rem = C.constRemaining(S, i);
+      setText($('#sanct-prog-a'), awake ? '다음 후원 Lv.' + (c.level + 1) : '성좌 각성까지');
+      setText($('#sanct-prog-b'), fmt(c.invested) + ' / ' + fmt(need));
+      width($('#sanct-fill'), Math.min(1, c.invested.div(need).toNumber()) * 100);
+      setDisabled($('#inv10'), S.matter.isZero());
+      setText($('#invneed'), (awake ? '필요량 공물 · ' : '각성시키기 · ') + fmt(rem));
+      setDisabled($('#invneed'), !S.matter.gte(rem));
+    }
+    const powers = S.apostles[i];
+    skillEls.forEach((r, j) => {
+      setText(r.name, D.skills[j].name + ' Lv.' + powers.skills[j] + (j === 2 && powers.skills[j] > 0 ? ' · ' + Math.round(C.revelationInterval(powers.skills[j]) / 1000) + '초마다' : ''));
+      if (!awake) { setText(r.cost, '잠듦'); setDisabled(r.btn, true); }
+      else if (powers.skills[j] >= 20) { setText(r.cost, 'MAX'); setDisabled(r.btn, true); }
+      else { setText(r.cost, fmt(C.skillCost(S, i, j))); setDisabled(r.btn, !C.canFundSkill(S, i, j)); }
+    });
+    // 사도
+    const ap = SG.apostleOf(S, i);
+    cls(apEls.wrap, 'hidden', !ap); cls(apEls.empty, 'hidden', !!ap);
+    if (!ap) {
+      const lost = g.hall.filter(hh => hh.patron === i).pop();
+      setText(apEls.empty, !awake ? '성좌가 잠들어 있습니다. 공물을 바쳐 깨우거나, 운명 사건 중 성좌가 스스로 깨어나기를 기다리세요.' : lost ? '사도 ' + lost.name + '을(를) 잃었습니다. 성좌가 새 사도를 찾고 있습니다…' : '성좌가 세계를 내려다보며 사도를 고르고 있습니다…');
+      setText($('#adv-sub'), ''); setText($('#adv-region'), lost && lost.fate === 'dead' ? '무덤' : '—');
+    } else {
+      const cl = SDX.classes[ap.cls], tr = SDX.traits[ap.trait];
+      if (apEls.drawn !== ap.id + ':' + Math.floor(ap.corrupt / 20)) { apEls.drawn = ap.id + ':' + Math.floor(ap.corrupt / 20); PX.personPortrait(apEls.cv, ap); }
+      setHTML(apEls.name, esc(ap.name) + (ap.title ? '<small>「' + esc(ap.title) + '」</small>' : ''));
+      setText(apEls.meta, tr.name + ' ' + cl.name + ' · ' + ap.origin + ' · Lv.' + ap.lvl);
+      const vals = [[ap.hp / ap.maxHp, Math.max(0, Math.round(ap.hp)) + '/' + Math.round(ap.maxHp)], [ap.loyal / 100, Math.round(ap.loyal)], [Math.min(1, ap.corrupt / 100), Math.round(Math.min(100, ap.corrupt))], [ap.xp / SG.xpNeed(ap.lvl), Math.floor(ap.xp / SG.xpNeed(ap.lvl) * 100) + '%']];
+      apEls.bars.forEach((b, k) => { width(b.fill, vals[k][0] * 100); setText(b.val, vals[k][1]); });
+      setHTML(apEls.stats, [['공격', ap.atk], ['방어', ap.def], ['행운', ap.luck], ['공적', ap.deeds]].map(([k, v]) => '<div>' + Math.round(v) + '<small>' + k + '</small></div>').join(''));
+      setText($('#adv-sub'), '생산 +' + Math.round(ap.lvl * 2) + '%');
+      const region = ap.act && ap.act.region !== undefined ? SDX.regions[ap.act.region].name : '여정';
+      setText($('#adv-region'), region);
+    }
+    setText($('#feed-label'), D.constellations[i].name);
+    renderFeed($('#sanct-feed'), g.feed.filter(f => f.c === i).slice(-30));
+  }
+
+  function fmtP(p) { return p < 0.001 ? (p * 100).toFixed(2) + '%' : p < 0.1 ? (p * 100).toFixed(2) + '%' : (p * 100).toFixed(1) + '%'; }
+  function updateFates(inf) {
+    const g = S.saga, nowP = performance.now();
+    const order = SDX.fates.slice().sort((a, b) => (SG.fateReady(S, b) - SG.fateReady(S, a)) || (g.tension[b.id] - g.tension[a.id]));
+    const fl = $('#fate-list');
+    order.forEach((f, k) => {
+      const r = fateEls[f.id], t = g.tension[f.id], p = SG.prob(t), ready = SG.fateReady(S, f);
+      if (fl.children[k] !== r.el) fl.insertBefore(r.el, fl.children[k] || null);
+      if (tensionSeen[f.id] !== undefined && t > tensionSeen[f.id] + 0.5) r.upUntil = nowP + 4000;
+      tensionSeen[f.id] = t;
+      cls(r.up, 'hidden', nowP > r.upUntil);
+      cls(r.el, 'off', !ready); cls(r.el, 'hot', ready && p >= 0.3); cls(r.el, 'warm', ready && p >= 0.05 && p < 0.3);
+      width(r.fill, p / 0.7 * 100);
+      setText(r.p, fmtP(p));
+      setText(r.note, !ready ? '조건 미충족' : g.stats.seen[f.id] ? g.stats.seen[f.id] + '회 발생' : '긴장도 ' + Math.round(t));
+    });
+    const il = $('#influence-list');
+    if (!il._built) { il._built = true; il.innerHTML = D.constellations.map(c => '<div class="infl"><span>' + esc(c.name) + '</span><span class="rail-bar gold"><span class="rail-bar-in"></span></span><b></b></div>').join(''); }
+    Array.from(il.children).forEach((row, i) => { width(row.querySelector('.rail-bar-in'), inf[i] / Math.max(...inf) * 100); setText(row.querySelector('b'), (inf[i] * 100).toFixed(1) + '% · ×' + SG.priceMult(S, i).toFixed(2)); });
+    renderFeed($('#global-feed'), g.feed.slice(-40));
+  }
+
+  const HALL_TAG = { dead: ['사망', 'dead'], fallen: ['타락', 'fallen'], sealed: ['봉인', 'fallen'], destroyed: ['소멸', 'fallen'], vanished: ['실종', ''] };
+  function personRow(p, tag, tagCls) {
+    const cl = SDX.classes[p.cls], tr = SDX.traits[p.trait];
+    return '<div class="person"><canvas class="pix" width="16" height="20" data-look="' + p.look + '" data-cls="' + p.cls + '" data-st="' + (tagCls === 'fallen' ? 'fallen' : 'free') + '"></canvas><div><b>' + esc(p.name) + '</b> <small>Lv.' + p.lvl + ' · ' + tr.name + ' ' + cl.name + (p.origin ? ' · ' + esc(p.origin) : '') + (p.title ? ' · 「' + esc(p.title) + '」' : '') + '</small></div><span class="tag ' + (tagCls || '') + '">' + tag + '</span></div>';
+  }
+  function paintPeople(el) { el.querySelectorAll('canvas[data-look]').forEach(cv => PX.personPortrait(cv, { look: Number(cv.dataset.look), cls: Number(cv.dataset.cls), corrupt: 0, status: cv.dataset.st })); }
+  function updateWorld() {
+    const g = S.saga;
+    const set = (el, list, render) => {
+      const sig = list.map(p => (p.id || p.name) + ':' + p.lvl).join(',');
+      if (el._sig === sig) return;
+      el._sig = sig;
+      el.innerHTML = list.length ? list.map(render).join('') : '<div class="empty-ap">없음</div>';
+      paintPeople(el);
+    };
+    set($('#free-list'), SG.free(S).slice().sort((a, b) => b.lvl - a.lvl), p => personRow(p, p.title ? '영웅' : '후보', p.title ? 'hero' : ''));
+    set($('#fallen-list'), SG.fallen(S), p => personRow(p, '타락', 'fallen'));
+    set($('#hall-list'), g.hall.slice().reverse(), hh => personRow(hh, (HALL_TAG[hh.fate] || ['기록', ''])[0] + (hh.patron >= 0 ? ' · ' + D.constellations[hh.patron].name : ''), (HALL_TAG[hh.fate] || ['', ''])[1]));
+    statRows($('#saga-stats'), [
+      ['운명 사건', fmtInt(g.stats.fates) + '회'], ['전조', fmtInt(g.stats.omens) + '회'], ['사도의 죽음', fmtInt(g.stats.deaths)], ['배신', fmtInt(g.stats.betrayals)],
+      ['타락', fmtInt(g.stats.falls)], ['성좌들이 가져간 반물질', fmt(g.stats.taken), true]
+    ]);
+  }
+
+  function onSaga(p) {
+    if (p.kind === 'fateDone') return onFateDone(p);
+    if (!started) return;
+    if (p.c === selConst && tab === 'stars' && subTab.stars === 'sanct' && p.text && !['battle', 'take'].includes(p.kind)) {
+      showBubble(p.kind === 'voice' ? p.text.replace(/^성좌 '[^']+'(이|가)\s*/, '') : p.text, ['death', 'fall', 'betray'].includes(p.kind) ? 'angry' : ['pick', 'level', 'sponsor', 'save'].includes(p.kind) ? 'cheer' : null);
+    }
+    const icon = { death: '🪦', fall: '😈', betray: '🗡', pick: '✨' }[p.kind];
+    if (icon) { toast(esc(p.text), icon, p.kind === 'pick' ? 'gold' : 'red'); if (p.kind !== 'pick') sfx.error(); else sfx.achieve(); }
+    else if (p.kind === 'omen-big') toast('<b>큰 전조</b> · ' + esc(p.text), '🔮', 'violet');
+  }
+  function onFateDone(o) {
+    if (!started) return;
+    const f = SDX.fates.find(x => x.id === o.id), story = (S.saga.feed.filter(e => e.kind === 'fate').pop() || {}).text || '';
+    sfx.crunch(); flash(); buzz(60);
+    const takenTxt = o.taken && !o.taken.isZero() ? '반물질 −' + fmt(o.taken) + ' (' + Math.round(o.frac * 100) + '%)' : '빼앗긴 반물질 없음';
+    if (tab === 'stars') {
+      modal({
+        icon: f.icon, title: '운명 사건 · ' + f.name,
+        body: '<p>' + esc(story.replace(/^【운명 사건】 [^—]+— /, '')) + '</p>' +
+          '<div class="modal-box"><h4>엮인 성좌</h4>' + o.inv.map(i => EMBLEMS[i] + ' ' + esc(D.constellations[i].name)).join(' · ') + '<br><b style="color:#ffb27a">' + takenTxt + '</b></div>' +
+          (o.lines.length ? '<div class="modal-box"><h4>결과</h4>' + o.lines.map(esc).join('<br>') + '</div>' : ''),
+        actions: [{ label: '확인', cls: 'btn-gold' }]
+      });
+    } else toast('<b>운명 사건! ' + esc(f.name) + '</b> · ' + takenTxt, f.icon, 'red');
+    save();
   }
 
   /* ───────────── 7. 업적 · 통계 ───────────── */
@@ -981,7 +1153,7 @@
     const badges = {
       home: tab !== 'home' && (C.canShift(S) || C.canBoost(S) || C.canCrunch(S)),
       galaxy: C.canGalaxy(S),
-      stars: S.constellations.some((c, i) => { const r = C.constRemaining(S, i); return r && S.matter.gte(r); }) || S.apostles.some((a, i) => [0, 1, 2].some(j => C.canFundSkill(S, i, j))),
+      stars: SDX.fates.some(f => SG.fateReady(S, f) && SG.prob(S.saga.tension[f.id]) >= 0.3) || S.constellations.some((c, i) => !c.apostleFound && S.matter.gte(C.constRemaining(S, i) || C.INF)),
       research: D.research.some((_, i) => C.canResearch(S, i)),
       infinity: D.upgrades.some((_, i) => C.canUpgrade(S, i)),
       records: newAch.size
@@ -1027,14 +1199,15 @@
       if (tab === 'galaxy') updateGalaxy();
       else if (tab === 'research') updateResearch();
       else if (tab === 'infinity') updateInfinity();
-      else if (tab === 'stars') updateStars();
+      else if (tab === 'stars') updateStars(now);
       else if (tab === 'records') updateRecords();
       else if (tab === 'settings') updateSettings();
     }
   }
   function resetViewCaches() {
     [$('#history-list'), $('#gx-grid'), effectsEl].forEach(el => { el._sig = null; });
-    constEls.forEach(r => { r.log._sig = null; });
+    [$('#sanct-feed'), $('#global-feed'), $('#free-list'), $('#fallen-list'), $('#hall-list')].forEach(el => { el._sig = null; });
+    pickEls.forEach(r => { r.awake = null; }); faceFor = -1; if (apEls) apEls.drawn = null;
     challEls.forEach(r => { r.state = ''; });
     gxIndex = -1;
   }
@@ -1047,10 +1220,16 @@
       modal({
         icon: '🌙', title: '다시 오신 것을 환영합니다',
         body: '<p>자리를 비운 <b>' + fmtTime(seconds) + '</b> 동안 차원들이 쉬지 않고 일했습니다.</p><div class="modal-big">' + GEM_AM + '+' + fmt(r.gain) + '</div><p>반물질 획득</p>' +
-          '<div class="modal-box">오프라인 효율 ×' + C.offlineMult(S).toFixed(2) + (r.capped ? ' · 최대 24시간까지 적용' : '') + '</div>',
+          '<div class="modal-box">오프라인 효율 ×' + C.offlineMult(S).toFixed(2) + (r.capped ? ' · 최대 24시간까지 적용' : '') + '</div>' + sagaAwayHTML(r.saga),
         actions: [{ label: '수령하기', cls: 'btn-gold', run: () => { sfx.achieve(); const [x, y] = centerOf(coreBtn); burst(x, y, 18); } }]
       });
     } else if (seconds >= 10 && !r.gain.isZero()) toast('자리를 비운 동안 +' + fmt(r.gain) + ' 반물질', '🌙');
+  }
+
+  function sagaAwayHTML(g) {
+    if (!g || !(g.fates || g.deaths || g.falls || g.betrayals || g.highlights.length)) return '';
+    return '<div class="modal-box"><h4>그동안 성좌들 사이에서는…</h4>운명 사건 ' + g.fates + '회 · 사도의 죽음 ' + g.deaths + ' · 배신 ' + g.betrayals + ' · 타락 ' + g.falls +
+      (g.highlights.length ? '<br><br>' + g.highlights.map(t => '· ' + esc(t)).join('<br>') : '') + '</div>';
   }
 
   function frame(t) {
@@ -1069,6 +1248,7 @@
     }
     if (t - lastUi >= 100) { lastUi = t; update(now); }
     if (tab === 'galaxy' && t - gxAnim > (settings.quality === 'ultra' ? 16 : 40)) { gxAnim = t; drawGalaxyStage(t); }
+    if (tab === 'stars' && subTab.stars === 'sanct' && t - lastStage > (settings.quality === 'low' ? 100 : 40)) { lastStage = t; drawStage(t); }
     if (now - lastSave > 10000) save();
     if (now - lastDailyCheck > 60000) { lastDailyCheck = now; checkDaily(); }
   }

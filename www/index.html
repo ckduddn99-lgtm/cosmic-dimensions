@@ -227,10 +227,58 @@
 
     <!-- ── 6. 성좌 ── -->
     <section class="pane" id="pane-stars">
-      <div class="frame">
-        <div class="frame-head"><div class="frame-ico">✦</div><div><div class="frame-title">성좌 후원</div><div class="frame-sub">반물질을 바쳐 사도를 찾고 성좌의 영구적인 축복을 받으세요. 빅 크런치 후에도 유지됩니다.</div><div class="soon">곧 업데이트: 성좌가 직접 사도를 고르고, 도트로 움직이는 사도의 모험을 구경할 수 있게 됩니다.</div></div></div>
+      <div class="const-pick" id="const-pick"></div>
+      <div class="seg wide" data-subnav="stars">
+        <button class="seg-btn active" data-sub="sanct">성소</button>
+        <button class="seg-btn" data-sub="fate">운명의 실타래<i class="badge"></i></button>
+        <button class="seg-btn" data-sub="world">세계</button>
       </div>
-      <div class="card-grid two" id="const-grid"></div>
+      <div class="sub-pane active" data-subpane="sanct">
+        <div class="frame">
+          <div class="frame-head">
+            <canvas class="frame-ico pix" id="sanct-face" width="24" height="24"></canvas>
+            <div><div class="frame-title" id="sanct-title">오리온</div><div class="frame-sub" id="sanct-sub"></div></div>
+            <div class="const-lv" id="sanct-lv">Lv.0</div>
+          </div>
+          <div class="pixel-stage"><canvas id="sanct-canvas" class="pix"></canvas><div class="stage-label" id="sanct-name"></div><div class="bubble hidden" id="sanct-bubble"></div></div>
+          <div class="stat-table" id="sanct-stats" style="margin-top:10px"></div>
+          <div class="const-status" style="margin-top:8px"><span id="sanct-prog-a"></span><span id="sanct-prog-b"></span></div>
+          <span class="rail-bar sm gold"><span class="rail-bar-in" id="sanct-fill"></span></span>
+          <div class="invest-row"><button class="btn btn-cyan sm" id="inv10">10% 공물</button><button class="btn btn-gold sm" id="invneed"></button></div>
+          <div class="sub-title" style="margin-top:14px">성좌 권능</div>
+          <div id="sanct-skills"></div>
+        </div>
+        <div class="frame">
+          <div class="sub-title">사도 <small id="adv-sub"></small></div>
+          <div class="pixel-stage adv"><canvas id="adv-canvas" class="pix"></canvas><div class="stage-label" id="adv-region"></div></div>
+          <div id="apostle-info" style="margin-top:10px"></div>
+        </div>
+        <div class="frame">
+          <div class="sub-title">성좌 채널 <small id="feed-label"></small></div>
+          <div class="feed" id="sanct-feed"></div>
+        </div>
+      </div>
+      <div class="sub-pane" data-subpane="fate">
+        <div class="frame gold">
+          <div class="sub-title">운명의 실타래</div>
+          <p class="frame-sub" style="margin:0 0 10px">작고 큰 전조가 쌓이면 운명 사건의 확률이 0.01%에서 최대 70%까지 치솟습니다. 사건이 터지면 엮인 성좌들이 영향력만큼 반물질을 가져갑니다.</p>
+          <div class="fate-list" id="fate-list"></div>
+        </div>
+        <div class="frame">
+          <div class="sub-title">성좌 영향력 <small>몸값</small></div>
+          <div id="influence-list"></div>
+        </div>
+        <div class="frame">
+          <div class="sub-title">성좌 채널 <small>전체</small></div>
+          <div class="feed" id="global-feed"></div>
+        </div>
+      </div>
+      <div class="sub-pane" data-subpane="world">
+        <div class="frame"><div class="sub-title">세계의 인물들 <small>사도 후보</small></div><div class="people" id="free-list"></div></div>
+        <div class="frame"><div class="sub-title">타락한 자들</div><div class="people" id="fallen-list"></div></div>
+        <div class="frame"><div class="sub-title">명예의 전당</div><div class="people" id="hall-list"></div></div>
+        <div class="frame"><div class="sub-title">서사 기록</div><div class="stat-table" id="saga-stats"></div></div>
+      </div>
     </section>
 
     <!-- ── 7. 업적 ── -->
@@ -309,7 +357,10 @@
 <script src="js/bignum.js"></script>
 <script src="js/data.js"></script>
 <script src="js/core.js"></script>
+<script src="js/saga-data.js"></script>
+<script src="js/saga.js"></script>
 <script src="js/galaxy-art.js"></script>
+<script src="js/pixel.js"></script>
 <script src="js/ui.js"></script>
 </body>
 </html>
