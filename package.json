@@ -1,10 +1,12 @@
 {
   "name": "cosmic-app",
   "version": "1.0.0",
-  "description": "",
+  "description": "초공간 차원 붕괴: 인피니티 — 방치형 우주 게임 (Capacitor APK)",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --test tests/core.test.js tests/saga.test.js",
+    "sim": "node tests/sim.js",
+    "saga": "node tests/saga-sim.js"
   },
   "keywords": [],
   "author": "",

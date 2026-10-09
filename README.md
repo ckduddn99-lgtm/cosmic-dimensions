@@ -1,1 +1,50 @@
-IyDstIjqs7XqsIQg7LCo7JuQIOu2leq0tDog7J247ZS864uI7YuwCgrrsKnsuZjtmJUg6rKM7J6EIEFQSyDruYzrk5wg7ZSE66Gc7KCd7Yq4CgojIyDruYzrk5wg67Cp67KVCgoxLiDsnbQg66as7Y+s66W8IEdpdEh1YuyXkCDtkbjsi5wKMi4gQWN0aW9ucyDtg63sl5DshJwgIkJ1aWxkIEFQSyIg7JuM7YGs7ZSM66Gc7JqwIOyLpO2WiSAo65iQ64qUIG1haW4g67iM656c7LmY7JeQIO2RuOyLnO2VmOuptCDsnpDrj5kg7Iuk7ZaJKQozLiDruYzrk5wg7JmE66OMIO2bhCBBcnRpZmFjdHPsl5DshJwgYGNvc21pYy1kaW1lbnNpb25zLWFwa2Ag64uk7Jq066Gc65OcCgojIyDqtazsobAKCi0gYHd3dy9gIC0g6rKM7J6EIEhUTUwg7YyM7J28Ci0gYC5naXRodWIvd29ya2Zsb3dzL2J1aWxkLWFway55bWxgIC0gQVBLIOu5jOuTnCDsm4ztgaztlIzroZzsmrAK
+# 초공간 차원 붕괴: 인피니티
+
+[Antimatter Dimensions](https://ivark.github.io/AntimatterDimensions/)에서 영감을 받은 방치형(Idle) 우주 게임입니다. Capacitor로 Android APK를 빌드합니다.
+
+## 게임 소개
+
+- **블랙홀 터치** — 터치할수록 콤보가 쌓이며 반물질을 모읍니다.
+- **8개의 차원** — 높은 차원이 낮은 차원을 생산하는 사슬 구조. 10개 묶음마다 생산 ×2. 원작과 같은 템포(첫 인피니티 2~3시간).
+- **차원 희생** — 제1~7차원을 바쳐 제8차원을 강화합니다.
+- **차원 교체 · 부스트 · 반물질 은하** — 리셋으로 더 강한 우주를 만듭니다.
+- **빅 크런치** — 1.79e308(∞)에 도달하면 우주를 붕괴시켜 인피니티 포인트(IP)를 얻습니다.
+- **성좌 · 사도 (도트 관전)** — 성좌를 깨우면 성좌가 세계의 인물 중 취향에 맞는 사도를 직접 고릅니다.
+  성좌마다 도트로 그린 성소가 있고, 성좌가 그 안을 돌아다니거나 앉아 있습니다. 사도는 스스로 모험하며
+  싸우고, 죽고, 배신하고, 타락합니다.
+- **운명 사건** — 작고 큰 전조가 쌓이면 사건 확률이 0.01%에서 70%까지 치솟습니다. 사건이 터지면 엮인 성좌들이
+  영향력만큼 반물질을 가져가고, 영향력이 큰 성좌일수록 몸값(후원 비용)이 비쌉니다.
+- **연구 트리 · 은하 컬렉션(4가지 타입) · 인피니티 업그레이드 · 자동화 · 도전 6종 · 업적 44개**
+- **혜성 · 특수 현상 · 과충전 · 일일 접속 보상 · 오프라인 진행(최대 24시간)**
+
+## 구조
+
+- `www/index.html` — 화면 뼈대
+- `www/css/app.css` — 스타일
+- `www/js/bignum.js` — 큰 수 연산
+- `www/js/data.js` — 밸런스 데이터 (비용·보상 수치는 여기서 조정)
+- `www/js/core.js` — 게임 규칙 (DOM 없음, Node에서 테스트 가능)
+- `www/js/saga-data.js` — 성좌 서사 데이터 (직업 · 성격 · 운명 사건 · 전조)
+- `www/js/saga.js` — 성좌 서사 엔진 (DOM 없음)
+- `www/js/pixel.js` — 도트 렌더러 (성소 · 사도 모험 · 몬스터)
+- `www/js/galaxy-art.js` — 절차적 은하 그리기
+- `www/js/ui.js` — 렌더링 · 입력 · 연출 · 저장
+- `www/img/thumb/` — 게임에서 쓰는 경량 이미지
+- `www/img/ui/` — UI 에셋 시트에서 잘라낸 아이콘 (차원·은하·연구·업적·배지·인피니티 장면)
+- `art/` — 원본 아트 (APK에는 포함되지 않음)
+- `tests/` — 단위 테스트와 진행 속도 시뮬레이션
+
+## 개발
+
+```bash
+npm test          # 규칙 단위 테스트 + 진행 속도 회귀 검사
+npm run sim       # 봇 플레이 시뮬레이션 (주요 지점 도달 시간 출력)
+npm run saga      # 성좌 서사 시뮬레이션 (사건 빈도 · 확률 · 사도의 운명)
+npx http-server www   # 브라우저에서 실행
+```
+
+## APK 빌드
+
+1. 이 리포를 GitHub에 푸시
+2. Actions 탭에서 "Build APK" 워크플로우 실행 (또는 main 브랜치에 푸시하면 자동 실행)
+3. 빌드 완료 후 Artifacts에서 `cosmic-dimensions-apk` 다운로드

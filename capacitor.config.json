@@ -1,5 +1,6 @@
 {
   "appId": "com.cosmic.dimensions",
   "appName": "CosmicDimensions",
-  "webDir": "www"
+  "webDir": "www",
+  "backgroundColor": "#05060f"
 }
