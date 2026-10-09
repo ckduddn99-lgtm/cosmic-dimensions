@@ -31,10 +31,10 @@ jobs:
           npx cap add android || true
           npx cap sync android
 
-      - name: Setup signing keystore
+      - name: Setup signing
         run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/cosmic-release.keystore
-          printf '%s\n' 'android {' '    signingConfigs {' '        release {' "            storeFile file('cosmic-release.keystore')" "            storePassword 'cosmic123'" "            keyAlias 'cosmic'" "            keyPassword 'cosmic123'" '        }' '    }' '    buildTypes {' '        release {' '            signingConfig signingConfigs.release' '        }' '    }' '}' >> android/app/build.gradle
+          cp debug.keystore android/app/debug.keystore
+          printf '%s\n' 'android {' '    signingConfigs {' '        release {' "            storeFile file('debug.keystore')" "            storePassword 'android'" "            keyAlias 'androiddebugkey'" "            keyPassword 'android'" '        }' '    }' '    buildTypes {' '        release {' '            signingConfig signingConfigs.release' '        }' '    }' '}' >> android/app/build.gradle
 
       - name: Build APK
         run: |
