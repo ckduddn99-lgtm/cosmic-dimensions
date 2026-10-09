@@ -604,3 +604,38 @@ canvas.frame-ico { padding: 0; width: 40px; height: 40px; border-radius: 10px; }
 
 #sanct-face { width: 42px; height: 49px; }
 .cpick canvas { width: 36px; height: 42px; }
+
+/* 성소: 맵이 중심이 되도록 어두운 청록 바탕과 얇은 장식으로 정리한다. */
+#pane-stars { --sanct-accent: #a9c7db; }
+#pane-stars .frame { background: linear-gradient(180deg, #111c2d, #101626); border-color: #334456; box-shadow: inset 0 1px 0 #ffffff08, 0 6px 18px #0003; }
+#pane-stars .frame::before { --c: var(--sanct-accent); --l: 9px; --t: 1px; opacity: .4; filter: none; }
+#pane-stars .frame-head { gap: 10px; margin-bottom: 14px; }
+#pane-stars .frame-title { color: #e4ebf0; font-size: .95rem; }
+#pane-stars .frame-sub { color: #93a7b8; font-size: .66rem; line-height: 1.6; }
+#pane-stars .const-lv { color: var(--sanct-accent); border: 1px solid #455367; background: #172335; font-size: .64rem; padding: 4px 6px; border-radius: 3px; }
+#sanct-face { width: 34px; height: 40px; border-radius: 3px; box-shadow: none; flex-shrink: 0; }
+#pane-stars .cpick { gap: 4px; padding: 8px 2px 7px; border: 1px solid #28384a; background: #111b2a; box-shadow: none; }
+#pane-stars .cpick.active { background: #1d2b3c; border-color: var(--sanct-accent); box-shadow: inset 0 -2px 0 var(--sanct-accent); }
+#pane-stars .cpick canvas { width: 30px; height: 35px; border-radius: 0; box-shadow: none; }
+#pane-stars .cpick small { color: #819bad; font-size: .52rem; }
+#pane-stars .cpick.active b { color: var(--sanct-accent); }
+#pane-stars .cpick.sleep { opacity: .6; }
+#pane-stars .seg { background: #0e1725; border-color: #293b50; }
+#pane-stars .seg-btn.active { color: #e5eef4; background: #2a3c51; box-shadow: inset 0 -2px 0 var(--sanct-accent); }
+.sanctuary-stage { border: 1px solid #3c5063; border-radius: 5px; background: #142b3a; box-shadow: none; }
+#sanct-name { left: auto; top: auto; right: 9px; bottom: 8px; padding: 3px 6px; color: #a8bfcb; font-size: .56rem; font-weight: 500; background: #112433c9; border: 1px solid #69849933; border-radius: 2px; }
+#sanct-stats .stat-row { padding: 8px 0; font-size: .69rem; border-color: #2b3d4c88; }
+#sanct-stats .stat-row span:last-child { font-size: .69rem; color: #d1dfeb; }
+#sanct-stats .stat-row.hl span:last-child { color: var(--sanct-accent); }
+#sanct-stats .stat-row:last-child { display: block; line-height: 1.7; }
+#sanct-stats .stat-row:last-child span:last-child { display: block; text-align: left; color: #a6bac9; font-family: var(--sans); }
+#pane-stars .rail-bar { background: #0b1220; border-color: #314456; }
+#sanct-fill { background: var(--sanct-accent); box-shadow: none; }
+#pane-stars .btn-gold { color: #162333; background: #c6b28b; border-color: #decca9; box-shadow: inset 0 1px 0 #f4e9cb66; }
+#pane-stars .btn-cyan { color: #c2d7e6; background: #25394c; border-color: #426179; box-shadow: none; }
+#pane-stars .sub-title { color: #becddb; font-size: .78rem; }
+#pane-stars .bubble { padding: 5px 8px; color: #d9e7f0; background: #152434f5; border: 1px solid #698499; border-radius: 3px; box-shadow: 0 3px 8px #0005; font-weight: 500; }
+#pane-stars .bubble::after { background: #152434; border-color: #698499; border-width: 1px; }
+#sanct-stats .stat-row span:first-child { color: #8fa4b6; }
+#pane-stars .btn-violet { color: #c8c2df; background: #303349; border-color: #53536c; box-shadow: inset 0 1px 0 #ffffff08; }
+#pane-stars .empty-ap, #pane-stars .const-status { color: #8fa4b6; }

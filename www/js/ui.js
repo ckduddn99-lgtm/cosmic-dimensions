@@ -922,6 +922,7 @@
 
   function updateSanct(now, inf) {
     const i = selConst, c = S.constellations[i], def = D.constellations[i], awake = c.apostleFound, g = S.saga;
+    $('#pane-stars').style.setProperty('--sanct-accent', PX.SANCT[i].accent);
     if (faceFor !== i + (awake ? 10 : 0)) { faceFor = i + (awake ? 10 : 0); PX.portrait($('#sanct-face'), i, awake); }
     setText($('#sanct-title'), '성좌 \'' + def.name + '\'');
     setText($('#sanct-sub'), def.title + ' · ' + PX.SANCT[i].name);

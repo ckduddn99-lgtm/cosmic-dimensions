@@ -258,18 +258,29 @@
 
   // 성좌별 성소: 배경(정적) + 장식(움직임) + 이동 범위와 앉을 자리
   const SANCT = [
-    { name: '은빛 사냥꾼의 설원', sky: ['#050a18', '#14304a'], floor: '#1f3a22', walk: [24, 150], seat: { x: 112, y: 92, pose: 'sit' } },
-    { name: '별빛 음악당', sky: ['#0a0c24', '#1c2a5a'], floor: '#d8dcec', walk: [30, 160], seat: { x: 88, y: 92, pose: 'sit' } },
-    { name: '오만의 왕좌', sky: ['#14060c', '#3a0e1c'], floor: '#4a1a24', walk: [30, 160], seat: { x: 88, y: 80, pose: 'sit' } },
-    { name: '구름 위의 고원', sky: ['#2a3a7a', '#f0b88a'], floor: '#ffffff', walk: [20, 150], fly: true },
-    { name: '얼어붙은 호수', sky: ['#060c1c', '#1c3a5e'], floor: '#bcd4ee', walk: [24, 160], seat: { x: 140, y: 92, pose: 'kneel' } },
-    { name: '피의 투기장', sky: ['#1a0608', '#7a2a1a'], floor: '#b07440', walk: [26, 160] },
-    { name: '북극성의 고대 요람', sky: ['#020814', '#0c2440'], floor: '#e4eef8', walk: [30, 150], seat: { x: 120, y: 94, pose: 'sit' } },
-    { name: '심연의 사슬 성소', sky: ['#05020e', '#2a0c46'], floor: '#3a2a5a', walk: [30, 160], float: true }
+    { name: '은빛 사냥꾼의 설원', accent: '#9bbfda', sky: ['#050a18', '#14304a'], floor: '#1f3a22', walk: [24, 150], seat: { x: 112, y: 92, pose: 'sit' } },
+    { name: '별빛 음악당', accent: '#bf9ce0', sky: ['#0a0c24', '#1c2a5a'], floor: '#d8dcec', walk: [30, 160], seat: { x: 88, y: 92, pose: 'sit' } },
+    { name: '오만의 왕좌', accent: '#d6b987', sky: ['#14060c', '#3a0e1c'], floor: '#4a1a24', walk: [30, 160], seat: { x: 88, y: 80, pose: 'sit' } },
+    { name: '구름 위의 고원', accent: '#96cdd3', sky: ['#2a3a7a', '#f0b88a'], floor: '#ffffff', walk: [20, 150], fly: true },
+    { name: '얼어붙은 호수', accent: '#a9cdda', sky: ['#060c1c', '#1c3a5e'], floor: '#bcd4ee', walk: [24, 160], seat: { x: 140, y: 92, pose: 'kneel' } },
+    { name: '피의 투기장', accent: '#d69672', sky: ['#1a0608', '#7a2a1a'], floor: '#b07440', walk: [26, 160] },
+    { name: '북극성의 고대 요람', accent: '#c5ac73', sky: ['#020814', '#0c2440'], floor: '#e4eef8', walk: [30, 150], seat: { x: 120, y: 94, pose: 'sit' } },
+    { name: '심연의 사슬 성소', accent: '#aa92d5', sky: ['#05020e', '#2a0c46'], floor: '#3a2a5a', walk: [30, 160], float: true }
   ];
   const W = 192, H = 108, GROUND = 96;
   const MAP_IDS = ['orion', 'lyra', 'cassiopeia', 'pegasus', 'cygnus', 'scorpio', 'ursa', 'andromeda'];
   const MAP_H = 128;
+  // 각 맵의 앞마당 바닥 좌표. 계단·제단·절벽을 피해 짧게 거닌다.
+  const MAP_LAYOUT = [
+    { from: [80, 64], to: [109, 69], visitor: [102, 74] },
+    { from: [77, 64], to: [108, 69], visitor: [100, 75] },
+    { from: [80, 61], to: [108, 56], visitor: [97, 65] },
+    { from: [80, 64], to: [110, 70], visitor: [101, 75] },
+    { from: [77, 64], to: [108, 70], visitor: [101, 75] },
+    { from: [78, 63], to: [109, 69], visitor: [101, 74] },
+    { from: [82, 61], to: [110, 66], visitor: [99, 72] },
+    { from: [78, 65], to: [109, 71], visitor: [100, 76] }
+  ];
 
   function gradient(c, top, bottom, h) {
     const g = c.createLinearGradient(0, 0, 0, h);
@@ -372,7 +383,7 @@
       canvas.width = W; canvas.height = H;
       this.ctx.imageSmoothingEnabled = false;
       this.bgs = {}; this.i = -1; this.parts = []; this.visitor = null;
-      this.maps = {};
+      this.maps = {}; this.actorSprites = new Map();
     }
     set(i, awake) {
       if (this.i === i && this.awake === awake) return;
@@ -391,7 +402,7 @@
     get name() { return SANCT[this.i].name; }
     /** 말풍선 위치(캔버스 대비 %) */
     anchor() {
-      if (this.mapActive) return { x: (this.mapWalk.x + 6) / W * 100, y: (this.mapWalk.y - 28) / MAP_H * 100 };
+      if (this.mapActive) return { x: this.mapWalk.x / W * 100, y: (this.mapWalk.y - 13) / MAP_H * 100 };
       return { x: (this.av.x + 8) / W * 100, y: (this.av.y - (AVATARS[this.i].horse || AVATARS[this.i].bear ? 34 : 42)) / H * 100 };
     }
     react(kind) { this.av.mode = kind === 'angry' ? 'angry' : 'cheer'; this.av.until = performance.now() + 1800; }
@@ -456,25 +467,54 @@
       const moving = this.awake && Math.abs(a.target - a.progress) > 0.01;
       if (moving) a.progress += Math.sign(a.target - a.progress) * Math.min(Math.abs(a.target - a.progress), dt * 0.12);
       else if (this.awake && t >= a.until) { a.target = Math.random(); a.until = t + 3500 + Math.random() * 4000; }
-      a.x = 70 + a.progress * 38; a.y = 65 + a.progress * 10;
+      const layout = MAP_LAYOUT[this.i];
+      a.x = layout.from[0] + a.progress * (layout.to[0] - layout.from[0]);
+      a.y = layout.from[1] + a.progress * (layout.to[1] - layout.from[1]);
       const flip = a.target < a.progress, frame = Math.floor(t / (moving ? 160 : 500));
       if (!this.awake) { c.fillStyle = 'rgba(4,2,12,.64)'; c.fillRect(0, 0, W, MAP_H); }
-      c.globalAlpha = this.awake ? 0.45 : 0.18;
-      c.fillStyle = '#050814'; c.fillRect(Math.round(a.x - 2), Math.round(a.y - 1), 18, 3);
+      c.globalAlpha = this.awake ? 0.3 : 0.12;
+      c.fillStyle = '#071321';
+      c.fillRect(Math.round(a.x - 4), Math.round(a.y), 9, 1);
+      c.fillRect(Math.round(a.x - 2), Math.round(a.y + 1), 5, 1);
       c.globalAlpha = this.awake ? 1 : 0.4;
       const react = t < this.av.until && ['cheer', 'angry'].includes(this.av.mode);
       const pose = moving ? 'walk' : react ? (this.av.mode === 'angry' ? 'attack' : 'cast') : 'idle';
-      drawConstellation(c, this.i, a.x, a.y, pose, frame, flip, 0.65);
+      const sprite = this.mapSprite(pose, frame, flip);
+      // 48 도트의 인물 키를 원본 맵에서 42px로 맞춘다 (512px 높이의 약 8%).
+      c.drawImage(sprite, a.x - 7, a.y - 13.125, 14, 14);
       c.globalAlpha = 1;
-      if (this.awake && this.visitor) drawHuman(c, 116, 73, personLook(this.visitor), 'kneel', frame, true, 1);
+      if (this.awake && this.visitor) {
+        const key = this.visitor.id + ':' + this.visitor.look + ':' + this.visitor.corrupt + ':' + this.visitor.status;
+        if (this.visitorSpriteKey !== key) {
+          const sprite = document.createElement('canvas'); sprite.width = sprite.height = 64;
+          drawHuman(sprite.getContext('2d'), 20, 60, personLook(this.visitor), 'kneel', 0, true, 2);
+          this.visitorSprite = sprite; this.visitorSpriteKey = key;
+        }
+        const [x, y] = layout.visitor;
+        c.globalAlpha = .24; c.fillStyle = '#071321'; c.fillRect(x - 3, y, 7, 1); c.globalAlpha = 1;
+        c.drawImage(this.visitorSprite, x - 8, y - 15, 16, 16);
+      }
       if (this.awake) {
-        for (let k = 0; k < 10; k++) {
+        for (let k = 0; k < 6; k++) {
           const x = 38 + (k * 37 % 115), y = 24 + (k * 19 % 67) - (t / 140 + k * 3) % 12;
-          c.globalAlpha = 0.15 + 0.4 * Math.max(0, Math.sin(t / 800 + k));
+          c.globalAlpha = 0.06 + 0.18 * Math.max(0, Math.sin(t / 1400 + k));
           c.fillStyle = L.glow; c.fillRect(Math.floor(x), Math.floor(y), 1, 1);
         }
       }
       c.restore();
+    }
+
+    mapSprite(pose, frame, flip) {
+      const key = this.i + ':' + pose + ':' + (frame % 4) + ':' + flip;
+      if (!this.actorSprites.has(key)) {
+        const sprite = document.createElement('canvas'); sprite.width = sprite.height = 64;
+        const ctx = sprite.getContext('2d');
+        drawConstellation(ctx, this.i, 16, 60, pose, frame % 4, flip, 1);
+        ctx.globalCompositeOperation = 'source-atop';
+        ctx.fillStyle = 'rgba(12,24,40,.12)'; ctx.fillRect(0, 0, 64, 64);
+        this.actorSprites.set(key, sprite);
+      }
+      return this.actorSprites.get(key);
     }
 
     drawAvatar(c, t, sleeping) {
