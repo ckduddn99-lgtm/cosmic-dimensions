@@ -56,7 +56,7 @@
     let cloth = c.color, hair = HAIRS[Math.floor(r() * HAIRS.length)];
     if (corrupt >= 50) cloth = mix(cloth, '#2a0f3a', Math.min(0.75, (corrupt - 40) / 80));
     return {
-      skin: SKINS[Math.floor(r() * SKINS.length)], hair, cloth, cloth2: shade(cloth, 0.7), pants: shade(cloth, 0.5), boots: '#2a1d16',
+      skin: SKINS[Math.floor(r() * SKINS.length)], trim: ['#d3bc7a','#a7cddd','#d4a3c9','#acb998'][Math.floor(r()*4)], hair, cloth, cloth2: shade(cloth, 0.7), pants: shade(cloth, 0.5), boots: '#2a1d16',
       eye: corrupt >= 60 ? '#ff2a55' : '#1a1a2a', gear: c.gear, hood: c.id === 'hunter' || c.id === 'thief' || (c.id === 'mage' && r() < 0.5),
       helmet: c.id === 'knight' || c.id === 'warrior' && r() < 0.5, longHair: r() < 0.45,
       aura: p.status === 'fallen' ? '#9b2bff' : corrupt >= 80 ? '#6a1fb0' : null
@@ -95,50 +95,57 @@
     }
   }
 
+  /* 사도 24×36 원화. 기존 발 위치·크기는 유지하고 도트 밀도를 두 배로 높인다. */
   function drawHuman(ctx, x, y, L, pose = 'idle', f = 0, flip = false, unit = 1) {
-    const ox = x, oy = y - 18 * unit;
     if (pose === 'dead') return drawLying(ctx, x, y, L, flip, unit);
-    const px = brush(ctx, ox, oy, unit, flip, 12);
-    const bob = pose === 'idle' && f % 2 === 1 ? 1 : 0;
-    const sit = pose === 'sit' || pose === 'kneel';
-    const dy = (sit ? 3 : 0) + bob;
-    // 망토
-    if (L.cape) px(2, 7 + dy, 2, sit ? 7 : 9, L.cape);
-    if (L.feathers) { px(1, 7 + dy, 2, 7, '#ffffff'); px(0, 9 + dy, 1, 4, '#dfe8ff'); }
-    // 다리
-    if (sit) {
-      px(4, 14, 6, 2, L.pants); px(9, 15, 2, 2, L.boots); px(3, 15, 2, 2, L.boots);
-    } else if (pose === 'walk') {
-      const st = [[0, 0], [1, -1], [0, 0], [-1, 1]][f % 4];
-      px(4 + st[0], 13, 2, 4, L.pants); px(4 + st[0], 17, 2, 1, L.boots);
-      px(6 + st[1], 13, 2, 4, shade(L.pants, 0.85)); px(6 + st[1], 17, 2, 1, L.boots);
-    } else {
-      px(4, 13, 2, 4, L.pants); px(6, 13, 2, 4, shade(L.pants, 0.85)); px(4, 17, 2, 1, L.boots); px(6, 17, 2, 1, L.boots);
+    const px = brush(ctx, x, y - 18 * unit, unit / 2, flip, 24);
+    const ink = '#151724', skin = L.skin, hair = L.hair, cloth = L.cloth;
+    const hi = shade(cloth, 1.35), lo = L.cloth2 || shade(cloth, .65), trim = L.trim || '#c8b88a';
+    const sit = pose === 'sit' || pose === 'kneel', bob = pose === 'idle' ? f % 2 : 0, dy = sit ? 4 : bob;
+    const step = pose === 'walk' ? [0, 2, 0, -2][f % 4] : 0;
+    if (L.cape || L.hood || L.robe) {
+      const cape = L.cape || shade(cloth, .5);
+      px(4, 16 + dy, 15, sit ? 13 : 18, ink);px(5, 17 + dy, 13, sit ? 11 : 16, cape);
+      px(5, 18 + dy, 2, 12, shade(cape, 1.25));px(17, 21 + dy, 2, 10, shade(cape, .75));
     }
-    // 몸통
-    px(3, 7 + dy, 6, 6, L.cloth);
-    if (L.robe) px(3, 12 + dy, 6, sit ? 2 : 4, L.cloth);
-    px(3, 11 + dy, 6, 1, L.cloth2);
-    if (L.belt3) { px(4, 11 + dy, 1, 1, '#fff'); px(6, 11 + dy, 1, 1, '#fff'); px(8, 11 + dy, 1, 1, '#fff'); }
-    if (L.chains) { px(2, 10 + dy, 1, 1, '#c8c8d8'); px(9, 10 + dy, 1, 1, '#c8c8d8'); }
-    // 팔
-    const swing = pose === 'walk' ? [0, 1, 0, -1][f % 4] : 0;
-    px(2, 7 + dy + Math.max(0, swing), 1, 4, L.cloth2); px(2, 11 + dy + Math.max(0, swing), 1, 1, L.skin);
-    if (pose === 'attack' && f % 2 === 1) { px(9, 8 + dy, 2, 1, L.cloth2); px(11, 8 + dy, 1, 1, L.skin); }
-    else if (pose === 'cast') { px(9, 3 + dy, 1, 4, L.cloth2); px(9, 2 + dy, 1, 1, L.skin); px(2, 3 + dy, 1, 4, L.cloth2); }
-    else { px(9, 7 + dy - Math.min(0, swing), 1, 4, L.cloth2); px(9, 11 + dy - Math.min(0, swing), 1, 1, L.skin); }
-    // 머리
-    px(4, 2 + dy, 4, 5, L.skin);
-    px(3, 1 + dy, 6, 2, L.hair); px(3, 3 + dy, 1, 2, L.hair);
-    if (L.longHair) px(3, 3 + dy, 1, 5, L.hair);
-    px(6, 4 + dy, 1, 1, L.eye); px(7, 4 + dy, 1, 1, L.eye);
-    if (L.hood) { px(3, 0 + dy, 6, 2, L.cloth2); px(2, 1 + dy, 1, 4, L.cloth2); px(3, 2 + dy, 1, 3, L.cloth2); }
-    if (L.helmet) { px(3, 0 + dy, 6, 2, '#8a94a8'); px(3, 2 + dy, 1, 2, '#8a94a8'); px(5, 0 + dy, 1, 1, '#c8d0e0'); }
-    if (L.crown) { px(4, -1 + dy, 4, 1, '#f0c040'); px(4, -2 + dy, 1, 1, '#f0c040'); px(6, -2 + dy, 1, 1, '#ff4a6a'); px(7, -2 + dy, 1, 1, '#f0c040'); }
-    if (L.tiara) { px(4, 0 + dy, 4, 1, '#e0e8ff'); px(5, -1 + dy, 1, 1, '#9cf0ff'); }
-    if (L.tail) { px(1, 9 + dy, 1, 4, '#5a1414'); px(0, 5 + dy, 1, 5, '#5a1414'); px(0, 4 + dy, 2, 1, '#5a1414'); px(2, 3 + dy, 1, 2, '#ffcc33'); }
-    if (pose === 'cast') px(5, -1 + dy, 2, 2, f % 2 ? '#fff6c8' : '#ffd27a');
-    if (!sit || L.gear !== 'harp') drawGear(px, L, pose, f);
+    if (sit) {
+      px(8, 29, 12, 4, L.pants);px(7, 32, 5, 3, L.boots);px(18, 32, 4, 3, L.boots);
+    } else {
+      for (const [xx, shift] of [[8, step], [14, -step]]) {
+        px(xx + shift / 2, 26, 5, 9, ink);px(xx + shift / 2 + 1, 27, 3, 6, L.pants);
+        px(xx + shift / 2, 33, 5, 3, L.boots);px(xx + shift / 2 + 1, 34, 3, 1, shade(L.boots, 1.6));
+      }
+    }
+    px(6, 15 + dy, 14, 12, ink);px(7, 16 + dy, 12, 10, cloth);px(7, 17 + dy, 2, 8, hi);px(17, 18 + dy, 2, 8, lo);
+    px(10, 15 + dy, 6, 3, '#e9dcc0');px(11, 16 + dy, 4, 1, '#9f958e');px(12, 18 + dy, 2, 8, trim);
+    px(7, 24 + dy, 12, 2, lo);px(12, 24 + dy, 3, 2, trim);px(13, 24 + dy, 1, 1, '#f9e7b1');
+    if (L.robe) {px(7, 26 + dy, 12, sit ? 3 : 7, cloth);for (const xx of [8, 12, 16]) px(xx, 27 + dy, 1, sit ? 2 : 5, hi);px(7, 32, 12, 1, trim);}
+    if (L.helmet) {px(6, 16 + dy, 4, 5, '#9da6bd');px(16, 16 + dy, 4, 5, '#7a819c');px(8, 19 + dy, 10, 5, '#8590a8');px(9, 19 + dy, 1, 4, '#c4cede');}
+    const armY = pose === 'cast' ? 10 + dy : 17 + dy;
+    px(4, armY + Math.max(0, step), 3, 8, lo);px(5, armY + Math.max(0, step), 1, 6, hi);px(4, armY + 7 + Math.max(0, step), 3, 3, skin);
+    if (pose === 'attack' && f % 2) {px(19, 18 + dy, 5, 3, lo);px(23, 18 + dy, 2, 3, skin);}
+    else {px(19, armY - Math.min(0, step), 3, 8, lo);px(19, armY + 7 - Math.min(0, step), 3, 3, skin);}
+    // 머리 외곽을 계단형으로 깎고, 눈빛·볼·앞머리에 한 도트씩 색을 나눈다.
+    px(8, 3 + dy, 10, 12, ink);px(7, 5 + dy, 12, 8, ink);px(8, 3 + dy, 10, 5, hair);
+    px(8, 7 + dy, 10, 6, skin);px(9, 13 + dy, 8, 2, skin);px(10, 15 + dy, 6, 1, shade(skin, .8));
+    px(8, 9 + dy, 1, 4, shade(skin, .82));px(17, 9 + dy, 1, 4, shade(skin, .75));
+    px(10, 9 + dy, 2, 2, L.eye || ink);px(15, 9 + dy, 2, 2, L.eye || ink);px(10, 9 + dy, 1, 1, '#f6f3ef');px(15, 9 + dy, 1, 1, '#f6f3ef');
+    px(13, 11 + dy, 1, 2, shade(skin, .8));px(12, 14 + dy, 3, 1, '#a16d72');px(9, 12 + dy, 1, 1, '#c68c85');
+    px(8, 4 + dy, 10, 3, hair);px(8, 6 + dy, 3, 3, hair);px(16, 6 + dy, 2, 2, hair);
+    px(10, 4 + dy, 3, 1, shade(hair, 1.6));px(14, 5 + dy, 2, 1, shade(hair, 1.3));
+    if (L.longHair) {px(7, 8 + dy, 2, 10, hair);px(17, 8 + dy, 2, 10, hair);px(7, 9 + dy, 1, 7, shade(hair, 1.4));}
+    if (L.hood) {px(7, 3 + dy, 12, 3, lo);px(6, 6 + dy, 2, 8, lo);px(18, 6 + dy, 2, 8, lo);px(8, 3 + dy, 8, 1, hi);px(7, 5 + dy, 1, 5, trim);}
+    if (L.helmet) {px(7, 3 + dy, 12, 4, '#78829a');px(9, 2 + dy, 8, 1, '#acb6c9');px(12, 3 + dy, 2, 6, '#d0d7df');px(7, 7 + dy, 2, 6, '#78829a');px(17, 7 + dy, 2, 6, '#78829a');}
+    if (L.feathers) for (let k=0;k<3;k++) {px(2+k, 14+dy+k, 2, 8-k, '#f5f6ff');px(20-k, 14+dy+k, 2, 8-k, '#c6d8f0');}
+    if (L.chains) for (let k=0;k<3;k++) px(3+k%2, 20+dy+k*3, 2, 1, '#b8b6d1');
+    // 기존 장비 종류와 공격 모션을 고해상도 붓에 연결한다.
+    drawGear((gx,gy,gw,gh,color)=>px(gx*2,gy*2+dy,gw*2,gh*2,color),L,pose,f);
+    if (L.gear==='book') {px(20, 21+dy, 5, 5, '#d8c8a1');px(22, 21+dy, 1, 5, '#85657e');}
+    if (L.gear==='lute') {px(18, 23+dy, 4, 1, '#efce90');px(20, 20+dy, 1, 6, '#d5b985');}
+    if (L.gear==='shield') {px(20, 18+dy, 2, 10, trim);px(18, 21+dy, 6, 1, trim);}
+    if (L.gear==='orb') {px(23, 18+dy, 1, 2, '#f8dcff');px(22, 19+dy, 3, 1, '#f8dcff');}
+    if (pose==='cast') {px(12, 0, 1, 3, '#ffe4ae');px(11, 1, 3, 1, '#ffe4ae');}
+    if (L.aura) {px(3, 16+dy, 1, 2, L.aura);px(22, 13+dy, 1, 2, L.aura);}
   }
 
   function drawLying(ctx, x, y, L, flip, unit) {
@@ -185,6 +192,7 @@
       for (let k=0;k<4;k++){px(23-k,15+k*3,2,6,'#6ca7d1');px(22-k,15+k*3,1,4,'#c2f2ff');}
       px(3,29,4,10,'#7ab2d7');px(2,31,2,9,'#daeaff');
       for (const [k,xx] of [9,13,21,25].entries()){px(xx,35,2,9+(k%2?step:-step),'#acbfd8');px(xx,44+(k%2?step:-step),3,3,gold);}
+      for(let k=0;k<5;k++){px(8+k*2,17+k*2,1,4,'#c1d8ed');px(10+k*2,19+k*2,1,3,'#a3bed8');}px(24,17,1,1,'#f8fbff');px(12,32,10,1,'#f3f6ef');
       px(21,24,7,1,gold);px(22,27,5,1,gold);px(14,30,6,2,'#658dbc');px(16,29,1,5,gold);return;
     }
     if (i === 6) {
@@ -193,6 +201,7 @@
       px(12,14,13,8,'#be9867');px(20,18,7,6,'#dfbe83');px(25,19,3,2,dark);px(21,16,2,2,dark);px(21,16,1,1,light);px(11,28,12,10,'#ba8e5e');
       for(let k=0;k<8;k++){px(7+(k*7%18),22+(k*5%16),2,2,k%2?'#956b48':'#62442e');}
       px(5,40,8,7+step,'#50382d');px(22,40,8,7-step,'#50382d');px(6,46+step,6,1,'#dec397');px(23,46-step,6,1,'#dec397');
+      for(let k=0;k<12;k++){const xx=6+(k*7%20),yy=22+(k*5%18);px(xx,yy,1,2,k%2?'#c29664':'#563d2c');}px(21,16,1,1,'#f7e1bd');px(22,21,4,1,'#835634');
       px(11,9,14,2,gold);px(14,7,2,3,gold);px(20,6,2,4,gold);px(17,4,2,5,light);px(15,6,6,1,light);px(15,28,6,1,light);px(17,26,2,5,light);return;
     }
     const cloth=L.cloth, mid=shade(cloth,1.35), dk=shade(cloth,.55), skin=L.skin;
@@ -203,10 +212,16 @@
     for(let yy=23;yy<42;yy++){const half=yy>31?9:7;px(17-half,yy,half*2,1,cloth);px(17-half,yy,2,1,dk);px(20,yy,2,1,mid);}
     px(14,23,6,2,light);px(16,26,2,13,gold);px(9,31,16,2,gold);px(15,31,4,2,light);
     for(let k=0;k<4;k++){px(10+k*4,37,1,4,mid);px(10+k*4,42,2,1,gold);}
-    // 얼굴: 입체적인 머리칼과 작은 눈·코·빛 반사
-    px(10,7,14,16,dark);px(11,6,12,14,L.hair);px(12,11,10,10,skin);px(12,19,10,2,shade(skin,.8));px(13,14,2,2,dark);px(20,14,2,2,dark);px(13,14,1,1,'#ffffff');px(20,14,1,1,'#ffffff');px(17,16,1,2,shade(skin,.8));px(16,19,3,1,'#9b6166');
-    px(11,7,12,3,L.hair);px(11,10,3,4,L.hair);px(20,10,3,3,L.hair);px(13,7,3,1,shade(L.hair,1.5));
-    if(L.longHair){for(const xx of [9,23]){px(xx,12,3,17,L.hair);px(xx+1,15,1,11,shade(L.hair,1.3));}}
+    // 턱선·앞머리·홍채를 분리한 작은 얼굴. 금속이나 피부가 평평하게 보이지 않게 음영을 나눈다.
+    px(12,6,10,2,dark);px(10,8,14,11,dark);px(11,19,12,2,dark);px(13,21,8,2,dark);
+    px(12,7,10,3,L.hair);px(11,9,12,9,L.hair);
+    px(12,11,10,7,skin);px(13,18,8,2,skin);px(14,20,6,1,shade(skin,.83));
+    px(12,13,1,5,shade(skin,.8));px(21,13,1,5,shade(skin,.75));px(14,12,5,1,shade(skin,1.08));
+    px(13,13,3,1,shade(L.hair,.8));px(19,13,3,1,shade(L.hair,.8));
+    px(13,14,3,2,'#eee8e2');px(19,14,3,2,'#eee8e2');px(14,14,2,2,L.eye);px(20,14,2,2,L.eye);px(14,14,1,1,'#ffffff');px(20,14,1,1,'#ffffff');
+    px(17,16,1,2,shade(skin,.79));px(14,17,1,1,'#d39d97');px(20,17,1,1,'#d39d97');px(16,19,3,1,'#986474');
+    px(11,8,12,3,L.hair);px(11,10,3,3,L.hair);px(20,10,3,2,L.hair);px(13,8,4,1,shade(L.hair,1.5));px(18,9,2,1,shade(L.hair,1.25));
+    if(L.longHair){for(const xx of [9,23]){px(xx,11,2,15,L.hair);px(xx+1,14,1,8,shade(L.hair,1.4));px(xx+1,25,2,3,shade(L.hair,.8));}}
     px(7,25,3,9+step,mid);px(25,25,3,9-step,dk);px(7,33+step,3,3,skin);px(25,33-step,3,3,skin);
     if(i===0){ // 꼬챙이 활, 화살통, 잎사귀 후드
       px(9,6,16,4,'#31523c');px(9,10,3,8,'#31523c');px(22,10,3,8,'#31523c');px(12,5,9,1,'#729269');px(24,19,3,12,'#765636');for(let k=0;k<3;k++){px(24+k,14-k,1,8,'#c9ad77');px(24+k,13-k,1,2,'#e9e3c9');}
@@ -221,6 +236,26 @@
       px(11,7,13,5,'#79505b');px(16,12,2,4,gold);px(9,25,5,7,'#93616b');px(21,25,5,7,'#93616b');px(13,26,8,5,'#bd7c78');px(2,21,2,20,'#d4dbe2');px(1,37,5,2,gold);px(2,40,2,5,'#67432e');for(let k=0;k<5;k++){px(27+k%3,38-k*4,3,3,'#a35447');px(28+k%3,38-k*4,1,1,gold);}px(29,17,2,3,'#ffb566');
     }else if(i===7){ // 수정 왕녀, 끊어진 사슬과 심연의 보주
       px(11,7,12,1,'#d2d0eb');px(16,4,2,5,'#b78de7');px(15,5,4,1,light);for(let k=0;k<4;k++){px(5+k%2,29+k*4,3,2,'#a5a4ce');px(6+k%2,29+k*4,1,1,dark);}px(26,27,6,6,'#8c62c6');px(27,26,4,1,'#d7acff');px(28,28,2,2,'#f0d7ff');px(27,33,4,1,'#4d377b');
+    }
+    // 성좌마다 다른 소재와 자수: 같은 인물 틀에 색만 바꾸지 않는다.
+    if(i===0){
+      for(let k=0;k<9;k++){px(10+k,24+k,2,1,'#917353');px(10+k,24+k,1,1,'#c3a173');}
+      px(10,29,4,5,'#304838');px(11,30,2,1,'#adc08d');px(17,35,5,3,'#563d2b');px(17,35,5,1,'#9e8252');
+    }else if(i===1){
+      for(let k=0;k<4;k++){px(10+k*3,36+k%2,1,3,'#90b8e7');px(10+k*3,40,2,1,gold);}
+      px(12,25,1,4,light);px(11,28,3,1,light);px(19,32,1,4,gold);px(18,35,3,1,gold);px(30,23,1,2,'#b7e4f5');px(23,41,2,2,'#8ebbd0');
+    }else if(i===2){
+      for(let k=0;k<5;k++){px(9+k*3,23+k%2,2,2,'#d0baa4');px(11+k*2,37,1,4,gold);}
+      px(16,25,3,3,'#a93759');px(17,25,1,1,'#f5b2bc');px(26,20,6,1,'#e197a3');px(27,22,2,1,'#743052');
+    }else if(i===4){
+      for(let yy=26;yy<40;yy+=4)for(let xx=10;xx<24;xx+=4){px(xx+(yy%8?1:0),yy,2,1,'#b8d7ed');px(xx+1,yy+1,1,2,'#f1fbff');}
+      px(28,18,3,1,'#d2ffff');px(29,19,1,2,'#4876ae');
+    }else if(i===5){
+      for(let yy=27;yy<37;yy+=3){px(11,yy,11,1,'#4c2639');px(12,yy+1,9,1,'#ba7b79');}
+      px(15,26,4,3,'#cf9867');px(16,26,1,1,'#ffde9d');px(2,22,1,13,'#f2f3f4');px(3,25,1,10,'#8193b4');
+    }else if(i===7){
+      for(let k=0;k<5;k++){px(10+k*3,26+(k%2)*2,1,1,'#ded5ef');px(11+k*2,38+k%2,1,1,'#b4a2e0');}
+      px(17,33,1,4,'#c6b4ed');px(16,34,3,1,'#c6b4ed');px(27,28,1,1,'#bd86f2');px(30,30,1,2,'#4c337d');
     }
     if(pose==='cast'){px(15,0,4,1,light);px(16,-2,1,5,light);}else if(pose==='attack')px(0,28,5,1,'#ffcf91');
   }
@@ -697,11 +732,11 @@
   }
 
   function personPortrait(canvas, p) {
-    canvas.width = 16; canvas.height = 20;
+    canvas.width = 40; canvas.height = 40;
     const c = canvas.getContext('2d');
     c.imageSmoothingEnabled = false;
-    c.clearRect(0, 0, 16, 20);
-    drawHuman(c, 2, 20, personLook(p), 'idle', 0, false, 1);
+    c.clearRect(0, 0, 40, 40);
+    drawHuman(c, 8, 38, personLook(p), 'idle', 0, false, 2);
   }
 
   CD.pixel = { Sanctuary, Adventure, portrait, personPortrait, personLook, drawHuman, drawConstellation, drawMonster, SANCT, AVATARS, GLOW: AVATARS.map(a => a.glow) };

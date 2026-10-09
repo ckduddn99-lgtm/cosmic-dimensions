@@ -639,3 +639,7 @@ canvas.frame-ico { padding: 0; width: 40px; height: 40px; border-radius: 10px; }
 #sanct-stats .stat-row span:first-child { color: #8fa4b6; }
 #pane-stars .btn-violet { color: #c8c2df; background: #303349; border-color: #53536c; box-shadow: inset 0 1px 0 #ffffff08; }
 #pane-stars .empty-ap, #pane-stars .const-status { color: #8fa4b6; }
+/* 사도의 새 40px 원화는 가로세로 비율을 유지한다. */
+.ap-head canvas { width: 44px; height: 44px; }
+.person canvas { width: 28px; height: 28px; }
+.person { grid-template-columns: 28px 1fr auto; }
