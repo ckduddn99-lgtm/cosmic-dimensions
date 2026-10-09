@@ -18,7 +18,7 @@
     // 인피니티 업그레이드 (앞 4개는 이전 세이브와 순서가 같아야 한다)
     upgrades: [
       { icon: '⚡', name: '시공간 압축', desc: '차원 부스트 배율이 ×2에서 ×2.5로 증가합니다.', cost: 1 },
-      { icon: '🌌', name: '은하 가속', desc: '은하 1개당 틱 주기 감소폭이 2%에서 3%로 증가합니다.', cost: 1 },
+      { icon: '🌌', name: '은하 가속', desc: '반물질 은하의 틱스피드 강화 효과가 1.5배가 됩니다.', cost: 1 },
       { icon: '💠', name: '무한 생성기', desc: '제1차원의 생산량이 영구적으로 ×100 증가합니다.', cost: 2 },
       { icon: '♾', name: '초공간 시너지', desc: '빅 크런치 1회마다 모든 차원 생산량 +100%.', cost: 3 },
       { icon: '💰', name: '출발 자금', desc: '모든 리셋 후 반물질 100,000으로 시작합니다.', cost: 2 },
@@ -85,20 +85,25 @@
     items: ['시간의 파편', '차원의 씨앗', '별의 눈물', '공간의 매듭', '인피니티 잔향', '중력의 심장', '빛의 화석', '우주의 기억', '차원석', '성운의 정수', '시간의 모래', '별가루 결정', '공허의 조각', '은하의 눈동자', '특이점 파편'],
 
     // 연구: currency 'am'은 비용 = 10^(costExp + stepExp × Lv), 'ip'는 비용 = cost × 2^Lv
+    // 연구 트리: req = 먼저 Lv.1 이상이어야 하는 연구, x/y = 트리 배치(%)
     research: [
-      { name: '차원 공명', desc: '모든 차원 생산 +20% / Lv', currency: 'am', costExp: 6, stepExp: 6 },
-      { name: '시간 압축', desc: '틱스피드 +10% / Lv', currency: 'am', costExp: 8, stepExp: 8 },
-      { name: '물질 정제', desc: '제1차원 생산 +50% / Lv', currency: 'am', costExp: 4, stepExp: 5 },
-      { name: '은하 씨앗', desc: '반물질 은하 요구량 -5% / Lv', currency: 'am', costExp: 40, stepExp: 20 },
-      { name: '초공간 도약', desc: '차원 부스트 배율 +0.1 / Lv', currency: 'am', costExp: 25, stepExp: 15 },
-      { name: '특이점 이론', desc: '빅 크런치 IP +1 / Lv', currency: 'ip', cost: 5 },
-      { name: '평행 우주', desc: '오프라인 생산 +50% / Lv', currency: 'ip', cost: 3 },
-      { name: '차원 융합', desc: '마스터리 경험치 +30% / Lv', currency: 'am', costExp: 12, stepExp: 10 },
-      { name: '암흑 물질', desc: '과충전 배율 +0.1 / Lv (×2 → ×2.5)', currency: 'ip', cost: 4 },
-      { name: '무한 회로', desc: '업적 보너스 +10% / Lv', currency: 'ip', cost: 3 }
+      { icon: '◈', name: '차원 공명', desc: '모든 차원 생산 +20% / Lv', per: 0.2, unit: '%', currency: 'am', costExp: 6, stepExp: 6, req: -1, x: 50, y: 10 },
+      { icon: '⏱', name: '시간 압축', desc: '틱스피드 +10% / Lv', per: 0.1, unit: '%', currency: 'am', costExp: 8, stepExp: 8, req: 0, x: 22, y: 38 },
+      { icon: '💠', name: '물질 정제', desc: '제1차원 생산 +50% / Lv', per: 0.5, unit: '%', currency: 'am', costExp: 4, stepExp: 5, req: 0, x: 78, y: 38 },
+      { icon: '🌌', name: '은하 씨앗', desc: '반물질 은하 요구량 -5% / Lv', per: 0.05, unit: '%', currency: 'am', costExp: 40, stepExp: 20, req: 4, x: 50, y: 90 },
+      { icon: '⚡', name: '초공간 도약', desc: '차원 부스트 배율 +0.1 / Lv', per: 0.1, unit: 'x', currency: 'am', costExp: 25, stepExp: 15, req: 1, x: 22, y: 66 },
+      { icon: '✴', name: '특이점 이론', desc: '빅 크런치 IP +1 / Lv', per: 1, unit: 'n', currency: 'ip', cost: 5, req: -1, x: 50, y: 12 },
+      { icon: '🌙', name: '평행 우주', desc: '오프라인 생산 +50% / Lv', per: 0.5, unit: '%', currency: 'ip', cost: 3, req: 5, x: 22, y: 50 },
+      { icon: '✦', name: '차원 융합', desc: '마스터리 경험치 +30% / Lv', per: 0.3, unit: '%', currency: 'am', costExp: 12, stepExp: 10, req: 2, x: 78, y: 66 },
+      { icon: '🔥', name: '암흑 물질', desc: '과충전 배율 +0.1 / Lv (×2 → ×2.5)', per: 0.1, unit: 'x', currency: 'ip', cost: 4, req: 5, x: 78, y: 50 },
+      { icon: '🏆', name: '무한 회로', desc: '업적 보너스 +10% / Lv', per: 0.1, unit: '%', currency: 'ip', cost: 3, req: 6, x: 50, y: 88 }
     ],
     researchMax: 5,
 
+    galaxyTypes: [
+      { id: 'spiral', name: '나선 은하' }, { id: 'elliptical', name: '타원 은하' },
+      { id: 'irregular', name: '불규칙 은하' }, { id: 'ring', name: '고리 은하' }
+    ],
     galaxyNames: ['NGC-7843', 'K-91', 'IN-776', 'A17-β', 'ZQ-114', 'PX-9', 'HL-203', 'VX-88', 'OR-15', 'TY-42'],
 
     // 특수 현상 (플레이 중에만 발생)

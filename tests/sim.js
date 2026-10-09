@@ -34,6 +34,7 @@ function simulate({ hours = 4, research = true, challenge = -1, preset = null, l
       if (core.canCrunch(s)) { core.crunch(s, now); if (buyUpgrades) for (let i = 0; i < 10; i++) core.buyUpgrade(s, i); continue; }
       core.buyMaxAll(s);
       if (!core.galaxy(s) && !core.shift(s)) core.boost(s);
+      if (core.canSacrifice(s) && core.sacrificeGain(s) >= 2) core.sacrifice(s);
       if (research) for (let i = 0; i < 10; i++) while (core.buyResearch(s, i));
     }
   }

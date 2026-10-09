@@ -185,7 +185,9 @@ test('이전 버전(v2) 세이브 변환', () => {
   assert.equal(s.apostles[0].log[0].msg, '12:00 hello');
   assert.equal(s.research[0], 5);
   assert.equal(s.buff.used, true);
-  assert.equal(s.galaxyCollection.length, 2, '문자열은 보존되며 화면에서 이스케이프한다');
+  assert.equal(s.galaxyCollection.length, 2, '이름은 보존되며 화면에서 이스케이프한다');
+  assert.equal(s.galaxyCollection[1].name, '<img src=x onerror=alert(1)>');
+  assert.ok(['spiral', 'elliptical', 'irregular', 'ring'].includes(s.galaxyCollection[0].type));
   assert.throws(() => core.revive({ nope: 1 }, NOW));
 });
 
@@ -234,15 +236,33 @@ test('연구 효과가 실제로 적용된다', () => {
   assert.ok(Math.abs(core.dimMults(s, NOW)[0].toNumber() / base - 1.2 * 1.5) < 1e-9);
   s.research[3] = 5;
   assert.equal(core.galaxyReq(s), 60);
+  const f = core.fresh(NOW); f.matter = B(1, 100);
+  assert.equal(core.canResearch(f, 4), false, '선행 연구(시간 압축) 필요');
+  f.research[0] = 1; f.research[1] = 1;
+  assert.equal(core.canResearch(f, 4), true);
   s.research[6] = 2;
   assert.equal(core.offlineMult(s), 2);
   s.research[8] = 5;
   assert.equal(core.buffPower(s), 2.5);
 });
 
-test('진행 속도: 탐욕 봇이 20~90분 사이에 첫 인피니티 도달', () => {
-  const { marks } = simulate({ hours: 1.5, log: false });
+test('진행 속도: 탐욕 봇이 1~4시간 사이에 첫 인피니티 도달 (원작과 비슷한 템포)', () => {
+  const { marks } = simulate({ hours: 4, log: false });
   const t = marks['crunch#1 (+1IP)'];
-  assert.ok(t !== undefined, '1.5시간 내 첫 크런치 실패');
-  assert.ok(t > 20 * 60 && t < 90 * 60, '첫 크런치 ' + Math.round(t / 60) + '분');
+  assert.ok(t !== undefined, '4시간 내 첫 크런치 실패');
+  assert.ok(t > 60 * 60 && t < 240 * 60, '첫 크런치 ' + Math.round(t / 60) + '분');
+});
+
+test('차원 희생: 제8차원 배율을 얻고 리셋 시 초기화', () => {
+  const s = core.fresh(NOW);
+  s.shifts = 4;
+  assert.equal(core.canSacrifice(s), false);
+  s.dims[7].amount = B(1); s.dims[0].amount = B(1, 40);
+  assert.ok(core.canSacrifice(s));
+  const g = core.sacrifice(s);
+  assert.ok(Math.abs(g - 16) < 1e-6, '배율 ' + g);
+  assert.ok(s.dims[0].amount.isZero() && !s.dims[7].amount.isZero());
+  assert.equal(core.canSacrifice(s), false, '1차원이 없으면 이득 없음');
+  s.dims[7].bought = 20; core.boost(s);
+  assert.equal(core.sacMult(s), 1);
 });

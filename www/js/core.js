@@ -36,6 +36,7 @@
       ip: 0,
       shifts: 0, boosts: 0, galaxies: 0, infinities: 0,
       tickspeedPurchased: 0,
+      sacrificed: new BigNum(0),
       dims: D.dims.map(() => ({ amount: new BigNum(0), bought: 0 })),
       infinityUpgrades: D.upgrades.map(() => false),
       automation: { low: true, high: true, reset: true, crunch: true },
@@ -56,7 +57,7 @@
       daily: { lastDay: '', streak: 0 },
       stats: {
         startedAt: now, playSeconds: 0, totalMatter: new BigNum(10), totalPurchases: 0, crunches: 0,
-        taps: 0, comets: 0, goldenComets: 0, bestIp: 0, totalIp: 0, maxCombo: 0, longestOffline: 0, bestStreak: 0,
+        taps: 0, comets: 0, goldenComets: 0, sacrifices: 0, bestIp: 0, totalIp: 0, maxCombo: 0, longestOffline: 0, bestStreak: 0,
         history: ['새 우주 관측 시작']
       },
       savedAt: now
@@ -96,7 +97,11 @@
   }
   function blessing(s) { return s.apostles.reduce((a, ap) => a + (ap.awake ? ap.skills[0] * 0.05 : 0), 0); }
   function boostBase(s) { return 2 + (hasUpg(s, 0) ? 0.5 : 0) + 0.1 * rLvl(s, 4); }
-  function tickBase(s) { return Math.max(0.6, 0.88 - s.galaxies * (hasUpg(s, 1) ? 0.03 : 0.02)); } // 0.6 = TICK_FLOOR
+  // 원작식 틱 배율: 은하 2개까지는 2%씩, 이후 3.5%씩 곱으로 감소 ('은하 가속'은 은하 효과 1.5배)
+  function tickBase(s) {
+    const g = s.galaxies * (hasUpg(s, 1) ? 1.5 : 1);
+    return g < 3 ? 0.9 - 0.02 * g : 0.84 * Math.pow(0.965, g - 2);
+  }
   function buffActive(s, now) { return now < s.buff.endsAt; }
   function buffPower(s) { return 2 + 0.1 * rLvl(s, 8); }
   function buffDuration(s) { return 60000 * (1 + constBonus(s, 3)); }
@@ -135,6 +140,7 @@
         if (eventActive(s, 'flood', now)) k *= 4;
         if (cometBoostActive(s, now)) k *= 3;
       }
+      if (i === 7) k *= sacMult(s);
       return g.mul(BigNum.pow(sb, Math.floor(d.bought / 10))).mul(k);
     });
   }
@@ -220,22 +226,37 @@
   /* ───────────── 리셋 계열 ───────────── */
 
   function shiftReq() { return 20; }
-  function boostReq(s) { return 20 + s.boosts * 10; }
-  function galaxyReq(s) { return Math.ceil((80 + s.galaxies * 40) * (1 - 0.05 * rLvl(s, 3))); }
+  function boostReq(s) { return 20 + s.boosts * 15; }
+  function galaxyReq(s) { return Math.ceil((80 + s.galaxies * 60) * (1 - 0.05 * rLvl(s, 3))); }
   const topDim = s => s.dims[unlocked(s) - 1];
 
   function canShift(s) { return unlocked(s) < 8 && !inChallenge(s, 2) && topDim(s).bought >= shiftReq(); }
   function canBoost(s) { return !inChallenge(s, 3) && topDim(s).bought >= boostReq(s); }
-  const TICK_FLOOR = 0.6;
-  function galaxyMaxed(s) { return tickBase(s) <= TICK_FLOOR + 1e-9; }
-  function canGalaxy(s) { return s.shifts >= 4 && !galaxyMaxed(s) && s.dims[7].bought >= galaxyReq(s); }
+  function canGalaxy(s) { return s.shifts >= 4 && s.dims[7].bought >= galaxyReq(s); }
   function canCrunch(s) { return s.activeChallenge < 0 && s.matter.gte(INF); }
 
   function resetRun(s, depth) {
     s.matter = startMatter(s);
     s.dims.forEach(d => { d.amount = new BigNum(0); d.bought = 0; });
+    s.tickspeedPurchased = 0;              // 원작처럼 모든 리셋이 틱스피드를 초기화
+    s.sacrificed = new BigNum(0);
     if (depth !== 'dims') { s.shifts = 0; s.boosts = 0; }
-    if (depth === 'crunch') { s.galaxies = 0; s.tickspeedPurchased = 0; }
+    if (depth === 'crunch') s.galaxies = 0;
+  }
+
+  /* 차원 희생: 제1~7차원을 바쳐 제8차원 배율을 얻는다 (다음 리셋까지 유지) */
+  function sacMultOf(total) { return total.isZero() ? 1 : Math.max(1, Math.pow(total.log10() / 10, 2)); }
+  function sacMult(s) { return sacMultOf(s.sacrificed); }
+  function sacrificeGain(s) { return sacMultOf(s.sacrificed.add(s.dims[0].amount)) / sacMult(s); }
+  function canSacrifice(s) { return unlocked(s) >= 8 && !s.dims[7].amount.isZero() && sacrificeGain(s) > 1.0001; }
+  function sacrifice(s) {
+    if (!canSacrifice(s)) return 0;
+    const gain = sacrificeGain(s);
+    s.sacrificed = s.sacrificed.add(s.dims[0].amount);
+    for (let i = 0; i < 7; i++) s.dims[i].amount = new BigNum(0);
+    s.stats.sacrifices++;
+    emit('sacrifice', { gain, mult: sacMult(s) });
+    return gain;
   }
 
   function shift(s) {
@@ -256,15 +277,16 @@
     return true;
   }
 
-  function galaxy(s) {
+  function galaxy(s, type) {
     if (!canGalaxy(s)) return false;
     s.galaxies++;
     const name = pick(D.galaxyNames) + '-' + Math.floor(rng() * 900 + 100);
-    s.galaxyCollection.push(name);
+    if (!D.galaxyTypes.some(t => t.id === type)) type = pick(D.galaxyTypes).id;
+    s.galaxyCollection.push({ name, type, seed: Math.floor(rng() * 1e9) });
     if (s.galaxyCollection.length > 50) s.galaxyCollection.shift();
     resetRun(s, 'galaxy');
     record(s, '반물질 은하 #' + s.galaxies + ' · ' + name);
-    emit('galaxy', { galaxies: s.galaxies, name });
+    emit('galaxy', { galaxies: s.galaxies, name, type });
     return true;
   }
 
@@ -293,7 +315,7 @@
   function snapshotRun(s) {
     return {
       matter: new BigNum(s.matter), shifts: s.shifts, boosts: s.boosts, galaxies: s.galaxies,
-      tickspeedPurchased: s.tickspeedPurchased,
+      tickspeedPurchased: s.tickspeedPurchased, sacrificed: new BigNum(s.sacrificed),
       dims: s.dims.map(d => ({ amount: new BigNum(d.amount), bought: d.bought }))
     };
   }
@@ -303,6 +325,7 @@
     s.matter = new BigNum(snap.matter);
     s.shifts = snap.shifts; s.boosts = snap.boosts; s.galaxies = snap.galaxies;
     s.tickspeedPurchased = snap.tickspeedPurchased;
+    s.sacrificed = new BigNum(snap.sacrificed || 0);
     s.dims.forEach((d, i) => { d.amount = new BigNum(snap.dims[i].amount); d.bought = snap.dims[i].bought; });
   }
 
@@ -498,7 +521,9 @@
     if (lvl >= D.researchMax) return null;
     return r.currency === 'ip' ? { ip: r.cost * Math.pow(2, lvl) } : { am: new BigNum(1, r.costExp + r.stepExp * lvl) };
   }
+  function researchOpen(s, i) { const r = D.research[i].req; return r < 0 || rLvl(s, r) >= 1; }
   function canResearch(s, i) {
+    if (!researchOpen(s, i)) return false;
     const c = researchCost(s, i);
     return !!c && (c.ip !== undefined ? s.ip >= c.ip : s.matter.gte(c.am));
   }
@@ -579,7 +604,8 @@
     { name: '끈기', desc: '누적 1시간 플레이', check: s => s.stats.playSeconds >= 3600 },
     { name: '완벽한 조화', desc: '8개 성좌 모두에서 사도 발견', check: s => s.constellations.every(c => c.apostleFound) },
     { name: '황금빛 행운', desc: '황금 혜성 포착', check: s => s.stats.goldenComets >= 1 },
-    { name: '연타의 신', desc: '콤보 50 달성', check: s => s.stats.maxCombo >= COMBO_MAX }
+    { name: '연타의 신', desc: '콤보 50 달성', check: s => s.stats.maxCombo >= COMBO_MAX },
+    { name: '희생의 대가', desc: '차원 희생 배율 ×10 달성', check: s => sacMult(s) >= 10 }
   ];
 
   function checkAchievements(s) {
@@ -641,7 +667,10 @@
       for (let i = unlocked(s) - 1; i >= 4; i--) buyDim(s, i, 'max');
       buyTickMax(s);
     }
-    if (hasUpg(s, 7) && a.reset) { if (!galaxy(s) && !shift(s)) boost(s); }
+    if (hasUpg(s, 7) && a.reset) {
+      if (!galaxy(s) && !shift(s)) boost(s);
+      if (canSacrifice(s) && sacrificeGain(s) >= 2) sacrifice(s);
+    }
     if (hasUpg(s, 9) && a.crunch && canCrunch(s)) crunch(s, now, true);
   }
 
@@ -729,6 +758,7 @@
     s.galaxies = whole(raw.galaxies, 0, 1e6);
     s.infinities = whole(raw.infinities);
     s.tickspeedPurchased = whole(raw.tickspeedPurchased, 0, 10000);
+    s.sacrificed = bn(raw.sacrificed);
     s.dims.forEach((d, i) => {
       const r = raw.dims[i] && typeof raw.dims[i] === 'object' ? raw.dims[i] : {};
       d.amount = bn(r.amount);
@@ -756,7 +786,7 @@
       s.activeChallenge = ac;
       s.challengeSnapshot = {
         matter: bn(sn.matter), shifts: whole(sn.shifts, 0, 4), boosts: whole(sn.boosts, 0, 1e6), galaxies: whole(sn.galaxies, 0, 1e6),
-        tickspeedPurchased: whole(sn.tickspeedPurchased, 0, 10000),
+        tickspeedPurchased: whole(sn.tickspeedPurchased, 0, 10000), sacrificed: bn(sn.sacrificed),
         dims: s.dims.map((_, i) => { const d = sn.dims[i] || {}; return { amount: bn(d.amount), bought: whole(d.bought, 0, 1e6) }; })
       };
     }
@@ -778,7 +808,13 @@
       };
     });
     s.research = s.research.map((_, i) => whole(Array.isArray(raw.research) ? raw.research[i] : 0, 0, D.researchMax));
-    s.galaxyCollection = Array.isArray(raw.galaxyCollection) ? raw.galaxyCollection.map(g => str(g, 40)).filter(Boolean).slice(-50) : [];
+    // 이전 버전은 이름 문자열만 저장했다
+    const gTypes = D.galaxyTypes.map(t => t.id);
+    s.galaxyCollection = (Array.isArray(raw.galaxyCollection) ? raw.galaxyCollection : []).map((g, k) => {
+      if (typeof g === 'string') return { name: g.slice(0, 40), type: gTypes[k % gTypes.length], seed: k * 7919 + g.length };
+      if (!g || typeof g.name !== 'string') return null;
+      return { name: g.name.slice(0, 40), type: gTypes.includes(g.type) ? g.type : 'spiral', seed: whole(g.seed, 0, 1e9) };
+    }).filter(Boolean).slice(-50);
 
     // 특수 현상: 이전 버전(activeEvent 문자열)은 버리고 다음 일정만 유지
     const ev = raw.event && typeof raw.event === 'object' ? raw.event : null;
@@ -796,7 +832,7 @@
     st.startedAt = num(rs.startedAt, 0, now) || now;
     st.playSeconds = num(rs.playSeconds, 0, 1e12);
     st.totalMatter = bn(rs.totalMatter || s.matter);
-    for (const k of ['totalPurchases', 'crunches', 'taps', 'comets', 'goldenComets', 'bestIp', 'totalIp', 'maxCombo', 'bestStreak']) st[k] = whole(rs[k], 0, 1e12);
+    for (const k of ['totalPurchases', 'crunches', 'taps', 'comets', 'goldenComets', 'sacrifices', 'bestIp', 'totalIp', 'maxCombo', 'bestStreak']) st[k] = whole(rs[k], 0, 1e12);
     st.longestOffline = num(rs.longestOffline, 0, 1e12);
     if (!rs.totalIp && s.infinities) st.totalIp = s.infinities;
     st.history = Array.isArray(rs.history) ? rs.history.map(h => str(h, 120)).filter(Boolean).slice(-40) : [];
@@ -812,12 +848,13 @@
     unlocked, hasUpg, inChallenge, totalBought, constLevel, constBonus, achCount, achBonus, challengeBonus,
     boostBase, tickBase, speed, globalMult, dimMults, production, dimOutput, offlineMult,
     dimCost, buyPlan, buyDim, nextCost, buyMaxAll, tickCost, tickLocked, canBuyTick, buyTick, buyTickMax,
-    shiftReq, boostReq, galaxyReq, galaxyMaxed, canShift, canBoost, canGalaxy, canCrunch, shift, boost, galaxy, ipGain, crunch,
+    sacMult, sacrificeGain, canSacrifice, sacrifice,
+    shiftReq, boostReq, galaxyReq, canShift, canBoost, canGalaxy, canCrunch, shift, boost, galaxy, ipGain, crunch,
     challengeGoal, challengesUnlocked, startChallenge, exitChallenge,
     buffActive, buffPower, buffDuration, activateBuff, eventActive, eventDef, cometBoostActive,
     tap, comboLeft, rollComet, claimComet, dailyInfo, dailyReward, claimDaily,
     constSearchNeed, constNeed, constRemaining, invest, skillCost, canFundSkill, fundSkill, revelationInterval,
-    researchCost, canResearch, buyResearch, canUpgrade, buyUpgrade,
+    researchCost, researchOpen, canResearch, buyResearch, canUpgrade, buyUpgrade,
     checkAchievements, nextGoal, masteryNeed,
     tick, advanceExact, offline, big
   };

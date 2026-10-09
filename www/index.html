@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="dark">
-  <meta name="theme-color" content="#05060f">
+  <meta name="theme-color" content="#07071c">
   <link rel="icon" href="data:,">
   <title>초공간 차원 붕괴: 인피니티</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -15,7 +15,7 @@
 <body>
 <canvas id="starfield" aria-hidden="true"></canvas>
 
-<!-- ── 타이틀 화면 ── -->
+<!-- ── 타이틀 ── -->
 <div class="splash" id="splash">
   <img class="splash-bg" src="img/thumb/hero-bg.webp" alt="">
   <div class="splash-inner">
@@ -25,217 +25,281 @@
     <button class="splash-start" id="start-btn">터치하여 시작</button>
     <div class="splash-hint" id="splash-hint">저장된 우주를 불러오는 중…</div>
   </div>
-  <div class="splash-ver">v2.0</div>
+  <div class="splash-ver">v2.1</div>
 </div>
 
-<div class="app" id="app" aria-hidden="true">
-  <!-- ── 상단 HUD ── -->
-  <header class="hud">
-   <div class="hud-row">
-    <div class="brand"><span class="brand-mark">∞</span><span class="brand-name">차원 붕괴</span></div>
-    <div class="hud-res">
-      <div class="res res-am" title="반물질">
-        <span class="res-ico">💠</span>
-        <div class="res-txt"><b id="hud-am">10</b><small id="hud-rate">+0 /초</small></div>
-      </div>
-      <div class="res res-ip" title="인피니티 포인트">
-        <span class="res-ico">⭐</span>
-        <div class="res-txt"><b id="hud-ip">0</b><small>IP</small></div>
+<div id="app" aria-hidden="true">
+  <!-- ── 좌측 메뉴 ── -->
+  <nav class="rail" id="rail" aria-label="게임 메뉴">
+    <div class="rail-logo">∞</div>
+    <button class="rail-btn active" data-tab="home">
+      <svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(-20 12 12)"/></svg>
+      <span>개요</span><i class="badge"></i></button>
+    <button class="rail-btn" data-tab="dims">
+      <svg class="ico" viewBox="0 0 24 24"><path d="M12 2l8.5 5v10L12 22l-8.5-5V7z"/><path d="M3.5 7L12 12l8.5-5M12 12v10"/></svg>
+      <span>차원</span><i class="badge"></i></button>
+    <button class="rail-btn" data-tab="galaxy">
+      <svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><path d="M12 10c-4-3-9-1-8 3 1 3 5 4 8 3M12 14c4 3 9 1 8-3-1-3-5-4-8-3"/></svg>
+      <span>은하</span><i class="badge"></i></button>
+    <button class="rail-btn" data-tab="research">
+      <svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1.8"/><ellipse cx="12" cy="12" rx="9.5" ry="3.6"/><ellipse cx="12" cy="12" rx="9.5" ry="3.6" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="9.5" ry="3.6" transform="rotate(-60 12 12)"/></svg>
+      <span>연구</span><i class="badge"></i></button>
+    <button class="rail-btn" data-tab="infinity">
+      <svg class="ico" viewBox="0 0 24 24"><path d="M12 12c-2-2.7-3.6-4-5.5-4a4 4 0 0 0 0 8c1.9 0 3.5-1.3 5.5-4zm0 0c2 2.7 3.6 4 5.5 4a4 4 0 0 0 0-8c-1.9 0-3.5 1.3-5.5 4z"/></svg>
+      <span>무한</span><i class="badge"></i></button>
+    <button class="rail-btn" data-tab="stars">
+      <svg class="ico" viewBox="0 0 24 24"><path d="M4 18l5-7 6 3 5-9"/><circle cx="4" cy="18" r="1.6"/><circle cx="9" cy="11" r="1.6"/><circle cx="15" cy="14" r="1.6"/><circle cx="20" cy="5" r="1.6"/></svg>
+      <span>성좌</span><i class="badge"></i></button>
+    <button class="rail-btn" data-tab="records">
+      <svg class="ico" viewBox="0 0 24 24"><path d="M8 4h8v5a4 4 0 0 1-8 0V4zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8.5 20h7M10 17h4"/></svg>
+      <span>업적</span><i class="badge"></i></button>
+    <div class="rail-sep"></div>
+    <button class="rail-btn" data-tab="settings">
+      <svg class="ico" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="17" r="2.2"/></svg>
+      <span>설정</span><i class="badge"></i></button>
+  </nav>
+
+  <!-- ── 상단바 ── -->
+  <header class="topbar">
+    <div class="topbar-row">
+      <div class="logo"><b>초공간 차원 붕괴</b><small>INFINITY</small></div>
+      <div class="cur-chips">
+        <div class="cur am" title="반물질"><i class="gem gem-am"></i><div><b id="hud-am">10</b><small id="hud-rate">+0/s</small></div></div>
+        <div class="cur ip" title="인피니티 포인트"><i class="gem gem-ip"></i><div><b id="hud-ip">0</b><small>IP</small></div></div>
+        <div class="cur ach" title="업적"><i class="gem gem-cup"></i><div><b id="hud-ach">0</b><small>업적</small></div></div>
       </div>
     </div>
-    <button class="icon-btn" id="settings-btn" aria-label="설정" data-tab="settings">
-      <svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="17" r="2.2"/></svg>
-    </button>
-   </div>
-   <div class="effects" id="effects"></div>
+    <div class="effects" id="effects"></div>
   </header>
 
-  <div class="shell">
-    <!-- ── 내비게이션 (모바일: 하단 / 데스크톱: 좌측) ── -->
-    <nav class="nav" id="nav" aria-label="게임 메뉴">
-      <button class="nav-btn active" data-tab="home">
-        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(-20 12 12)"/></svg>
-        <span>우주</span><i class="badge"></i>
-      </button>
-      <button class="nav-btn" data-tab="stars">
-        <svg viewBox="0 0 24 24"><path d="M4 18l5-7 6 3 5-9"/><circle cx="4" cy="18" r="1.6"/><circle cx="9" cy="11" r="1.6"/><circle cx="15" cy="14" r="1.6"/><circle cx="20" cy="5" r="1.6"/></svg>
-        <span>성좌</span><i class="badge"></i>
-      </button>
-      <button class="nav-btn" data-tab="research">
-        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="1.8"/><ellipse cx="12" cy="12" rx="9.5" ry="3.6"/><ellipse cx="12" cy="12" rx="9.5" ry="3.6" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="9.5" ry="3.6" transform="rotate(-60 12 12)"/></svg>
-        <span>연구</span><i class="badge"></i>
-      </button>
-      <button class="nav-btn" data-tab="infinity">
-        <svg viewBox="0 0 24 24"><path d="M12 12c-2-2.7-3.6-4-5.5-4a4 4 0 0 0 0 8c1.9 0 3.5-1.3 5.5-4zm0 0c2 2.7 3.6 4 5.5 4a4 4 0 0 0 0-8c-1.9 0-3.5 1.3-5.5 4z"/></svg>
-        <span>무한</span><i class="badge"></i>
-      </button>
-      <button class="nav-btn" data-tab="records">
-        <svg viewBox="0 0 24 24"><path d="M8 4h8v5a4 4 0 0 1-8 0V4zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8.5 20h7M10 17h4"/></svg>
-        <span>기록</span><i class="badge"></i>
-      </button>
-    </nav>
-
-    <main class="content">
-      <!-- ── 우주 (메인) ── -->
-      <section class="pane active" id="pane-home">
-        <div class="hero" id="hero">
-          <img class="hero-bg" src="img/thumb/hero-bg.webp" alt="">
-          <div class="hero-top">
-            <div class="hero-label">반물질</div>
-            <div class="hero-matter" id="matter">10</div>
-            <div class="hero-rate" id="rate">+0 /초</div>
-          </div>
-          <button class="core" id="core-btn" aria-label="블랙홀을 터치해 반물질 수집">
-            <span class="core-glow"></span>
-            <span class="core-ring"></span>
-            <span class="core-img"></span>
-            <span class="core-hint" id="core-hint">TAP!</span>
-          </button>
-          <div class="combo" id="combo" aria-hidden="true"><b id="combo-n">COMBO ×0</b><div class="combo-bar"><i id="combo-fill"></i></div></div>
-          <div class="hero-bottom">
-            <div class="inf-row"><span>∞ 까지</span><span id="inf-pct">0.0%</span></div>
-            <div class="rail"><div class="rail-fill" id="inf-progress"></div></div>
-          </div>
+  <main class="content">
+    <!-- ── 1. 개요 ── -->
+    <section class="pane active" id="pane-home">
+      <div class="frame hero" id="hero">
+        <img class="hero-bg" src="img/thumb/hero-bg.webp" alt="">
+        <div class="hero-top">
+          <div class="hero-label">총 반물질</div>
+          <div class="hero-matter" id="matter">10</div>
+          <div class="hero-rate" id="rate">+0 / 초</div>
         </div>
-
-        <button class="crunch-banner hidden" id="crunch-banner">
-          <span class="cb-ico">☄</span>
-          <span class="cb-txt"><b>빅 크런치 가능!</b><small id="crunch-reward">우주를 붕괴시키고 IP를 획득하세요</small></span>
-          <span class="cb-go">붕괴 ›</span>
+        <button class="core" id="core-btn" aria-label="블랙홀을 터치해 반물질 수집">
+          <span class="core-glow"></span><span class="core-ring"></span><span class="core-img"></span>
+          <span class="core-hint" id="core-hint">TAP!</span>
         </button>
+        <div class="combo" id="combo" aria-hidden="true"><b id="combo-n">COMBO ×0</b><div class="combo-bar"><i id="combo-fill"></i></div></div>
+        <div class="hero-bottom">
+          <div class="inf-row"><span>∞ 까지</span><span id="inf-pct">0.0%</span></div>
+          <span class="rail-bar gold"><span class="rail-bar-in" id="inf-progress"></span></span>
+        </div>
+      </div>
 
-        <button class="goal-card" id="goal-card">
-          <span class="goal-ico">🎯</span>
-          <span class="goal-main">
-            <span class="goal-kicker">다음 목표</span>
-            <b class="goal-name" id="goal-name">—</b>
-            <span class="goal-desc" id="goal-desc"></span>
-            <span class="rail sm"><span class="rail-fill" id="goal-fill"></span></span>
-          </span>
-          <span class="goal-reward">보상<b>+5%</b></span>
-        </button>
+      <button class="frame gold crunch-banner hidden" id="crunch-banner">
+        <span class="cb-ico">☄</span>
+        <span class="cb-txt"><b>빅 크런치 가능!</b><small id="crunch-reward">우주를 붕괴시키고 IP를 획득하세요</small></span>
+        <span class="btn btn-gold sm">붕괴 ›</span>
+      </button>
 
-        <div class="toolbar">
-          <div class="seg" id="buy-mode" role="group" aria-label="구매 수량">
-            <button class="seg-btn active" data-mode="1">×1</button>
-            <button class="seg-btn" data-mode="10">×10</button>
-            <button class="seg-btn" data-mode="max">MAX</button>
+      <div class="dim-strip" id="dim-strip"></div>
+
+      <div class="toolbar">
+        <div class="seg buy-mode" role="group" aria-label="구매 수량">
+          <button class="seg-btn active" data-mode="1">x1</button><button class="seg-btn" data-mode="10">x10</button><button class="seg-btn" data-mode="100">x100</button><button class="seg-btn" data-mode="max">MAX</button>
+        </div>
+        <button class="btn btn-gold" id="max-all">전부 구매</button>
+        <button class="btn btn-cyan tool-btn" id="home-tick">⏱ 틱 가속<small id="home-tick-cost">1K</small></button>
+        <button class="btn btn-buff" id="buff-btn">⚡ 과충전</button>
+        <button class="btn btn-violet tool-btn" id="home-sac">✦ 차원 희생<small id="home-sac-gain">—</small></button>
+      </div>
+
+      <button class="frame tight goal-card" id="goal-card">
+        <span class="frame-ico">🎯</span>
+        <span class="goal-main">
+          <span class="goal-kicker">다음 목표</span>
+          <b class="goal-name" id="goal-name">—</b>
+          <span class="goal-desc" id="goal-desc"></span>
+          <span class="rail-bar sm"><span class="rail-bar-in" id="goal-fill"></span></span>
+        </span>
+        <span class="goal-reward">보상<b>+5%</b></span>
+      </button>
+
+      <div class="sub-title">우주 조작</div>
+      <div class="action-grid" id="prestige-grid"></div>
+    </section>
+
+    <!-- ── 2. 차원 ── -->
+    <section class="pane" id="pane-dims">
+      <div class="frame">
+        <div class="frame-head"><div class="frame-ico"><img src="img/ui/dim1.webp" alt="" style="width:30px;height:30px;border-radius:50%"></div><div><div class="frame-title">차원 관리</div><div class="frame-sub">높은 차원은 바로 아래 차원을 만들어냅니다. 10개를 모을 때마다 생산 ×2.</div></div></div>
+        <div class="dim-tabs" id="dim-tabs"></div>
+        <div class="dd-main">
+          <div class="dd-art"><img id="dd-img" src="img/thumb/dim1.webp" alt=""></div>
+          <div class="dd-info">
+            <div class="dd-lv" id="dd-lv">I · Lv. 0</div>
+            <div class="dd-name" id="dd-name">물질 차원</div>
+            <div class="dd-rate" id="dd-rate">+0 / 초</div>
           </div>
-          <button class="btn btn-gold" id="max-all">전부 구매</button>
-          <button class="btn btn-buff" id="buff-btn">⚡ 과충전</button>
         </div>
-
-        <div class="tick-card" id="tick-card">
-          <div class="tick-ico"><span></span></div>
-          <div class="tick-info">
-            <b>틱스피드 가속기</b>
-            <small id="tick-info">가속 ×1.00</small>
+        <div class="dd-actions">
+          <div class="seg buy-mode" role="group" aria-label="구매 수량">
+            <button class="seg-btn active" data-mode="1">x1</button><button class="seg-btn" data-mode="10">x10</button><button class="seg-btn" data-mode="100">x100</button><button class="seg-btn" data-mode="max">MAX</button>
           </div>
-          <button class="buy-btn" id="buy-tick"><small>가속</small><b id="tick-cost">1K</b></button>
+          <button class="btn btn-violet lg dd-buy" id="dd-buy"><span id="dd-buy-label">구매</span><small class="cost"><i class="gem gem-am"></i><span id="dd-buy-cost">10</span></small></button>
         </div>
-
-        <div class="dim-list" id="dim-list"></div>
-
-        <h3 class="section-title">우주 조작</h3>
-        <div class="prestige-grid" id="prestige-grid"></div>
-      </section>
-
-      <!-- ── 성좌 ── -->
-      <section class="pane" id="pane-stars">
-        <div class="page-head"><h2>성좌 후원</h2><p>반물질을 바쳐 사도를 찾고, 성좌의 영구적인 축복을 받으세요. 빅 크런치 후에도 유지됩니다.</p></div>
-        <div class="card-grid two" id="const-grid"></div>
-      </section>
-
-      <!-- ── 연구 ── -->
-      <section class="pane" id="pane-research">
-        <div class="page-head"><h2>차원 연구소</h2><p>새로운 법칙을 발견해 생산 효율을 영구적으로 높입니다.</p></div>
-        <div class="card-grid three" id="research-grid"></div>
-        <div class="page-head sub"><h2>은하 컬렉션 <small id="galaxy-count">0</small></h2><p>반물질 은하를 만들 때마다 새로운 은하가 기록됩니다.</p></div>
-        <div class="galaxy-collection" id="galaxy-collection"></div>
-      </section>
-
-      <!-- ── 무한 ── -->
-      <section class="pane" id="pane-infinity">
-        <div class="ip-banner">
-          <div><div class="ip-label">인피니티 포인트</div><div class="ip-value"><span id="ip-value">0</span><small>IP</small></div></div>
-          <div class="ip-side" id="ip-side">빅 크런치 0회</div>
+      </div>
+      <div class="frame">
+        <div class="sub-title">상세 효과</div>
+        <div class="stat-table" id="dd-stats"></div>
+      </div>
+      <div class="frame">
+        <div class="sub-title">차원 가속 장치</div>
+        <div class="mini-row" id="tick-card">
+          <div class="mini-ico tick-ico">⏱</div>
+          <div class="mini-txt"><b>틱스피드 가속기</b><small id="tick-info">가속 ×1.00</small></div>
+          <button class="btn btn-cyan" id="buy-tick"><span>가속</span><small class="cost"><i class="gem gem-am"></i><span id="tick-cost">1K</span></small></button>
         </div>
-        <div class="seg seg-wide" data-subnav="infinity">
-          <button class="seg-btn active" data-sub="upgrades">업그레이드</button>
-          <button class="seg-btn" data-sub="auto">자동화</button>
-          <button class="seg-btn" data-sub="challenges">도전</button>
+        <div class="mini-row" style="margin-top:12px">
+          <div class="mini-ico">✦</div>
+          <div class="mini-txt"><b>차원 희생</b><small id="sac-info">제1~7차원을 바쳐 제8차원을 강화합니다</small></div>
+          <button class="btn btn-violet" id="sac-btn"><span>희생</span><small id="sac-gain">—</small></button>
         </div>
-        <div class="sub-pane active" data-subpane="upgrades"><div class="card-grid two" id="upgrade-grid"></div></div>
-        <div class="sub-pane" data-subpane="auto"><div class="panel" id="auto-list"></div></div>
-        <div class="sub-pane" data-subpane="challenges">
-          <p class="hint-line" id="challenge-hint">도전은 별도의 우주에서 진행됩니다. 완료하거나 포기하면 원래 우주로 돌아옵니다.</p>
-          <div class="card-grid three" id="challenge-grid"></div>
-        </div>
-      </section>
+      </div>
+    </section>
 
-      <!-- ── 기록 ── -->
-      <section class="pane" id="pane-records">
-        <div class="seg seg-wide" data-subnav="records">
+    <!-- ── 3. 은하 ── -->
+    <section class="pane" id="pane-galaxy">
+      <div class="frame">
+        <div class="frame-head"><div class="frame-ico">🌌</div><div><div class="frame-title">은하 관리</div><div class="frame-sub">반물질 은하를 만들 때마다 새로운 은하가 탄생합니다.</div></div></div>
+        <div class="gx-stage">
+          <canvas id="gx-canvas" width="640" height="400"></canvas>
+          <div class="gx-empty hidden" id="gx-empty">아직 탄생시킨 은하가 없습니다.<br>제8차원을 모아 첫 은하를 만들어 보세요.</div>
+          <button class="gx-arrow l" id="gx-prev" aria-label="이전 은하">‹</button>
+          <button class="gx-arrow r" id="gx-next" aria-label="다음 은하">›</button>
+          <div class="gx-name" id="gx-name"></div>
+          <div class="gx-type" id="gx-type"></div>
+        </div>
+        <div class="stat-table" id="gx-stats" style="margin-top:10px"></div>
+      </div>
+      <div class="frame">
+        <div class="sub-title">보유 은하 <small id="gx-count">0 / 50</small></div>
+        <div class="gx-grid" id="gx-grid"></div>
+      </div>
+      <div class="frame gold">
+        <div class="sub-title">새로운 은하 생성</div>
+        <div class="stat-table" id="gx-req"></div>
+        <button class="btn btn-gold lg block" id="gx-create" style="margin-top:10px">은하 생성하기</button>
+      </div>
+    </section>
+
+    <!-- ── 4. 연구 ── -->
+    <section class="pane" id="pane-research">
+      <div class="frame">
+        <div class="frame-head"><div class="frame-ico"><img src="img/ui/rs1.webp" alt="" style="width:30px;height:30px;border-radius:50%"></div><div><div class="frame-title">차원 연구</div><div class="frame-sub">새로운 법칙을 발견해 더 높은 차원의 힘을 얻습니다. 선행 연구가 필요합니다.</div></div></div>
+        <div class="seg wide" data-subnav="research">
+          <button class="seg-btn active" data-sub="am">일반 연구</button>
+          <button class="seg-btn" data-sub="ip">특수 연구 (IP)</button>
+        </div>
+        <div class="rs-tree" id="rs-tree"></div>
+      </div>
+      <div class="frame">
+        <div class="sub-title">선택된 연구</div>
+        <div class="rs-detail" id="rs-detail"></div>
+      </div>
+    </section>
+
+    <!-- ── 5. 무한 ── -->
+    <section class="pane" id="pane-infinity">
+      <div class="frame gold ip-banner">
+        <div><div class="ip-label">인피니티 포인트</div><div class="ip-value"><i class="gem gem-ip"></i><span id="ip-value">0</span><small>IP</small></div></div>
+        <div class="ip-side" id="ip-side">빅 크런치 0회</div>
+      </div>
+      <div class="seg wide" data-subnav="infinity">
+        <button class="seg-btn active" data-sub="upgrades">업그레이드</button>
+        <button class="seg-btn" data-sub="auto">자동화</button>
+        <button class="seg-btn" data-sub="challenges">도전</button>
+      </div>
+      <div class="sub-pane active" data-subpane="upgrades"><div class="card-grid two" id="upgrade-grid"></div></div>
+      <div class="sub-pane" data-subpane="auto"><div class="frame" id="auto-list"></div></div>
+      <div class="sub-pane" data-subpane="challenges">
+        <p class="hint-line" id="challenge-hint"></p>
+        <div class="card-grid three" id="challenge-grid"></div>
+      </div>
+    </section>
+
+    <!-- ── 6. 성좌 ── -->
+    <section class="pane" id="pane-stars">
+      <div class="frame">
+        <div class="frame-head"><div class="frame-ico">✦</div><div><div class="frame-title">성좌 후원</div><div class="frame-sub">반물질을 바쳐 사도를 찾고 성좌의 영구적인 축복을 받으세요. 빅 크런치 후에도 유지됩니다.</div><div class="soon">곧 업데이트: 성좌가 직접 사도를 고르고, 도트로 움직이는 사도의 모험을 구경할 수 있게 됩니다.</div></div></div>
+      </div>
+      <div class="card-grid two" id="const-grid"></div>
+    </section>
+
+    <!-- ── 7. 업적 ── -->
+    <section class="pane" id="pane-records">
+      <div class="frame">
+        <div class="frame-head"><div class="frame-ico"><img src="img/ui/ach1.webp" alt="" style="width:30px;height:30px;border-radius:50%"></div><div><div class="frame-title">업적</div><div class="frame-sub">달성한 업적: <b id="ach-count">0</b> / <span id="ach-total">0</span> · 생산 보너스 <b id="ach-bonus">×1.00</b></div></div></div>
+        <div class="seg wide" data-subnav="records">
           <button class="seg-btn active" data-sub="ach">업적</button>
           <button class="seg-btn" data-sub="stats">통계</button>
         </div>
         <div class="sub-pane active" data-subpane="ach">
-          <div class="ach-summary panel">
-            <div><div class="ip-label">달성한 업적</div><div class="ip-value"><span id="ach-count">0</span><small id="ach-total">/ 0</small></div></div>
-            <div class="ach-bonus">생산 보너스<b id="ach-bonus">×1.00</b></div>
-          </div>
-          <div class="ach-grid" id="ach-grid"></div>
+          <div class="chip-filter" id="ach-filter"></div>
+          <div class="ach-list" id="ach-list"></div>
         </div>
         <div class="sub-pane" data-subpane="stats">
           <div class="stats-grid" id="stats-grid"></div>
-          <div class="panel"><h3 class="panel-title">진행 기록</h3><div id="history-list"></div></div>
+          <div class="sub-title">진행 기록</div>
+          <div id="history-list"></div>
         </div>
-      </section>
+      </div>
+    </section>
 
-      <!-- ── 설정 ── -->
-      <section class="pane" id="pane-settings">
-        <div class="page-head"><h2>설정</h2><p>게임은 10초마다, 그리고 앱을 벗어날 때 자동으로 저장됩니다.</p></div>
-        <div class="card-grid two">
-          <div class="panel">
-            <h3 class="panel-title">게임 환경</h3>
-            <div class="toggle-row"><span>효과음</span><button class="switch" data-setting="sound" role="switch" aria-label="효과음"></button></div>
-            <div class="toggle-row"><span>진동 (지원 기기)</span><button class="switch" data-setting="haptics" role="switch" aria-label="진동"></button></div>
-            <div class="toggle-row"><span>숫자 팝업 · 파티클</span><button class="switch" data-setting="popups" role="switch" aria-label="숫자 팝업"></button></div>
-            <div class="toggle-row"><span>차원 교체·부스트 확인 창</span><button class="switch" data-setting="confirm" role="switch" aria-label="리셋 확인 창"></button></div>
-            <div class="toggle-row col"><span>숫자 표기</span>
-              <div class="seg" id="notation-seg">
-                <button class="seg-btn" data-notation="short">1.2K</button>
-                <button class="seg-btn" data-notation="kr">1.2만</button>
-                <button class="seg-btn" data-notation="sci">1.2e3</button>
-              </div>
-            </div>
-          </div>
-          <div class="panel">
-            <h3 class="panel-title">세이브 데이터</h3>
-            <p class="panel-copy">세이브 코드를 복사해 두면 기기를 바꾸거나 앱을 지워도 이어서 플레이할 수 있습니다.</p>
-            <div class="button-row">
-              <button class="btn btn-gold" id="save-now">지금 저장</button>
-              <button class="btn btn-cyan" id="export-save">세이브 코드 복사</button>
-              <button class="btn btn-cyan" id="import-save">세이브 불러오기</button>
-              <button class="btn btn-ghost" id="download-save">파일로 내려받기</button>
-              <button class="btn btn-danger" id="reset-save">진행 초기화</button>
-            </div>
-            <div class="save-note" id="save-note">마지막 저장: —</div>
+    <!-- ── 8. 설정 ── -->
+    <section class="pane" id="pane-settings">
+      <div class="frame">
+        <div class="frame-head"><div class="frame-ico">⚙</div><div><div class="frame-title">설정</div><div class="frame-sub">게임은 10초마다, 그리고 앱을 벗어날 때 자동으로 저장됩니다.</div></div></div>
+        <div class="sub-title">그래픽 설정</div>
+        <div class="quality-grid" id="quality-grid">
+          <button class="q-btn" data-quality="low"><i></i>낮음</button>
+          <button class="q-btn" data-quality="mid"><i></i>보통</button>
+          <button class="q-btn" data-quality="high"><i></i>높음</button>
+          <button class="q-btn" data-quality="ultra"><i></i>최고</button>
+        </div>
+        <div class="sub-title" style="margin-top:14px">게임 설정</div>
+        <div class="toggle-row"><span>효과음</span><button class="switch" data-setting="sound" role="switch" aria-label="효과음"></button></div>
+        <div class="toggle-row"><span>진동 (지원 기기)</span><button class="switch" data-setting="haptics" role="switch" aria-label="진동"></button></div>
+        <div class="toggle-row"><span>숫자 팝업 · 파티클</span><button class="switch" data-setting="popups" role="switch" aria-label="숫자 팝업"></button></div>
+        <div class="toggle-row"><span>차원 교체·부스트·희생 확인 창</span><button class="switch" data-setting="confirm" role="switch" aria-label="리셋 확인 창"></button></div>
+        <div class="toggle-row col"><span>수치 표기 형식</span>
+          <div class="seg" id="notation-seg">
+            <button class="seg-btn" data-notation="short">1.2K</button><button class="seg-btn" data-notation="kr">1.2만</button><button class="seg-btn" data-notation="sci">1.2e3</button>
           </div>
         </div>
-        <p class="about">초공간 차원 붕괴: 인피니티 · v2.0<br>단축키: 1~8 차원 구매 · M 전부 구매 · T 틱스피드 · B 과충전 · Space 블랙홀</p>
-      </section>
-    </main>
-  </div>
+      </div>
+      <div class="frame">
+        <div class="sub-title">세이브 데이터</div>
+        <p class="frame-sub" style="margin:0 0 10px">세이브 코드를 복사해 두면 기기를 바꾸거나 앱을 지워도 이어서 플레이할 수 있습니다.</p>
+        <div class="button-row">
+          <button class="btn btn-gold sm" id="save-now">지금 저장</button>
+          <button class="btn btn-cyan sm" id="export-save">세이브 코드 복사</button>
+          <button class="btn btn-cyan sm" id="import-save">세이브 불러오기</button>
+          <button class="btn btn-ghost sm" id="download-save">파일로 내려받기</button>
+          <button class="btn btn-danger sm" id="reset-save">진행 초기화</button>
+        </div>
+        <div class="save-note" id="save-note">마지막 저장: —</div>
+      </div>
+      <p class="about">초공간 차원 붕괴: 인피니티 · v2.1<br>단축키: 1~8 차원 구매 · M 전부 구매 · T 틱스피드 · S 차원 희생 · B 과충전 · Space 블랙홀</p>
+    </section>
+  </main>
 </div>
 
 <div class="comet-layer" id="comet-layer"></div>
 <div class="fx-layer" id="fx-layer" aria-hidden="true"></div>
 
 <div class="modal-backdrop" id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-  <div class="modal" id="modal-box">
+  <div class="frame gold modal" id="modal-box">
+    <div class="modal-title-bar"><span id="modal-title">확인</span><button class="modal-x" id="modal-x" aria-label="닫기">✕</button></div>
+    <div class="modal-art hidden" id="modal-art"></div>
     <div class="modal-icon" id="modal-icon">✦</div>
-    <h2 id="modal-title">확인</h2>
     <div class="modal-body" id="modal-body"></div>
     <div class="modal-actions" id="modal-actions"></div>
   </div>
@@ -245,6 +309,7 @@
 <script src="js/bignum.js"></script>
 <script src="js/data.js"></script>
 <script src="js/core.js"></script>
+<script src="js/galaxy-art.js"></script>
 <script src="js/ui.js"></script>
 </body>
 </html>
