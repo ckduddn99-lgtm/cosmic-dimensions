@@ -27,7 +27,15 @@ test('확률 곡선: 0.01%에서 시작해 70%를 넘지 않고 단조 증가', 
 
 test('데이터 무결성: 전조가 가리키는 사건이 모두 존재', () => {
   const ids = new Set(SD.fates.map(f => f.id));
-  for (const o of SD.omens) for (const id in o.add) assert.ok(ids.has(id), id);
+  for (const o of SD.omens) {
+    for (const id in o.add) assert.ok(ids.has(id), id);
+    for (const id in o.min || {}) assert.ok(ids.has(id), 'min ' + id);
+    if (o.text.includes('{A}')) assert.ok(['apostle', 'two', 'corrupt'].includes(o.need), '{A}는 사도 조건 필요: ' + o.text);
+    if (o.text.includes('{F}')) assert.equal(o.need, 'fallen', '{F}는 fallen 조건 필요: ' + o.text);
+  }
+  assert.equal(new Set(SD.fates.map(f => f.id)).size, SD.fates.length, '사건 id 중복');
+  const TYPES = ['buff', 'matter', 'ip', 'bless', 'duel', 'arena', 'trial', 'corrupt', 'purify', 'betray', 'rebellion', 'wed', 'hero'];
+  for (const f of SD.fates) for (const e of f.effects) assert.ok(TYPES.includes(e.type), f.id + ': ' + e.type);
   assert.ok(SD.fates.length >= 18 && SD.omens.length >= 45);
 });
 

@@ -287,6 +287,8 @@
 
   function omenReady(s, o) {
     if (o.c >= 0 && !awake(s, o.c)) return false;
+    // 단계형 빌드업: 앞 단계 전조로 긴장도가 충분히 쌓여야 다음 단계 전조가 등장한다
+    if (o.min) for (const id in o.min) if ((s.saga.tension[id] || 0) < o.min[id]) return false;
     if (o.need === 'apostle') return livingApostles(s).length > 0;
     if (o.need === 'two') return livingApostles(s).length > 1;
     if (o.need === 'corrupt') return livingApostles(s).some(p => p.corrupt >= 30);

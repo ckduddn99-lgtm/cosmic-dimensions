@@ -107,14 +107,15 @@
 
     /* 전조: 작은 사건(+3~8)과 큰 사건(+15~30)이 운명 사건의 긴장도를 쌓는다.
      * need: 'apostle' = 해당 성좌에 사도 필요, 'fallen' = 타락자 존재, 'corrupt' = 부패한 사도 존재, 'two' = 사도 2명 이상
-     * c: 관련 성좌 (메시지 주체), fx: 작은 효과 */
+     * c: 관련 성좌 (메시지 주체), fx: 작은 효과
+     * min: { 사건id: 긴장도 } — 그 사건의 긴장도가 이 값 이상일 때만 등장 (단계형 빌드업) */
     omens: [
       { c: 0, text: '오리온의 사냥터에서 피 묻은 화살이 발견되었다.', add: { scorpion_hunt: 6 } },
       { c: 5, text: '전갈이 오리온의 이름을 세 번 저주했다.', add: { scorpion_hunt: 12, blood_festival: 4 } },
       { c: 5, text: '전갈이 독을 벼리기 시작했다.', add: { scorpion_hunt: 8, abyss_whisper: 3 } },
       { c: 0, text: '오리온이 사냥감을 놓쳤다. 별들이 수군거린다.', add: { scorpion_hunt: 5, star_war: 2 } },
       { c: 5, text: '사막에 붉은 달이 떴다.', add: { blood_festival: 8 } },
-      { c: 5, big: true, text: '투기장의 문 앞에 수백 개의 무기가 쌓였다.', add: { blood_festival: 22, star_war: 5 } },
+      { c: 5, big: true, min: { blood_festival: 30 }, text: '투기장의 문 앞에 수백 개의 무기가 쌓였다.', add: { blood_festival: 22, star_war: 5 } },
       { c: 1, text: '리라의 현이 저절로 울렸다.', add: { concert: 8 } },
       { c: 1, text: '은하 저편에서 누군가 리라의 노래를 따라 부른다.', add: { concert: 6, star_wedding: 4 } },
       { c: 1, big: true, text: '리라가 천 년 만에 새 악보를 펼쳤다.', add: { concert: 25 } },
@@ -126,7 +127,7 @@
       { c: 2, big: true, text: '카시오페이아의 왕관에서 보석 하나가 사라졌다.', add: { crown_war: 24, traitor_brand: 8 } },
       { c: 7, text: '안드로메다가 사슬을 만지작거린다.', add: { chains_loosen: 9, lost_princess: 4 } },
       { c: 7, text: '꿈속에서 바다 괴물의 울음소리가 들렸다.', add: { lost_princess: 8, chains_loosen: 4 } },
-      { c: 7, big: true, text: '안드로메다의 사슬 고리 하나가 끊어졌다.', add: { chains_loosen: 28 } },
+      { c: 7, big: true, min: { chains_loosen: 35 }, text: '안드로메다의 사슬 고리 하나가 끊어졌다.', add: { chains_loosen: 28 } },
       { c: 7, text: '심연에서 누군가 사도의 이름을 불렀다.', add: { abyss_whisper: 9, eclipse: 2 } },
       { c: 3, text: '천마의 날개깃이 하나 빠졌다.', add: { pegasus_rampage: 7 } },
       { c: 3, text: '페가수스가 고삐를 물어뜯었다.', add: { pegasus_rampage: 10, lost_princess: 3 } },
@@ -142,7 +143,7 @@
       { c: -1, text: '하늘의 빛이 한순간 깜빡였다.', add: { eclipse: 6 } },
       { c: -1, big: true, text: '모든 별의 그림자가 같은 방향을 가리킨다.', add: { eclipse: 22, star_war: 6 } },
       { c: -1, text: '시험의 문이 멀리서 흔들린다.', add: { god_trial: 8 } },
-      { c: -1, big: true, text: '시험의 문 앞에 촛불이 켜졌다.', add: { god_trial: 22 } },
+      { c: -1, big: true, min: { god_trial: 25 }, text: '시험의 문 앞에 촛불이 켜졌다.', add: { god_trial: 22 } },
       { c: -1, need: 'two', text: '두 사도가 같은 여관에 묵었다.', add: { star_wedding: 9, blood_festival: 3 } },
       { c: -1, need: 'two', text: '두 사도가 길에서 마주쳐 칼자루에 손을 얹었다.', add: { blood_festival: 9, scorpion_hunt: 3 } },
       { c: -1, need: 'corrupt', fx: { corrupt: 8 }, text: '{A}의 눈빛이 탁해졌다.', add: { abyss_whisper: 8, frozen_judgement: 6 } },
